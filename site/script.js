@@ -2,8 +2,7 @@ function getSystemDarkMode() {
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || Math.min(window.innerWidth, window.innerHeight) < 700;
-var AUDIOBUFFSIZE = isMobileDevice ? 2048 : 1024;
+var AUDIOBUFFSIZE = 1024;
 
 class MyClass {
     constructor() {
@@ -69,7 +68,7 @@ class MyClass {
             invert2P: false,
             invert3P: false,
             invert4P: false,
-            disableAudioSync: true,
+            disableAudioSync: false,
             hadNipple: false,
             hadFullscreen: false,
             forceAngry: false,
@@ -202,7 +201,7 @@ class MyClass {
     detectMobile(){
         const ua = navigator.userAgent.toLocaleLowerCase();
         const isIphone = ua.includes('iphone');
-        const isIpad = ua.includes('ipad');
+        const isIpad = ua.includes('ipad') || (ua.includes('macintosh') && navigator.maxTouchPoints > 1);
         const isAndroid = ua.includes('android');
         const isMobileUA = isIphone || isIpad || isAndroid || ua.includes('mobile');
         const isSmallScreen = Math.min(window.innerWidth, window.innerHeight) < 768;
@@ -304,7 +303,8 @@ class MyClass {
         if (!this.audioInited)
         {
             this.audioInited = true;
-            this.audioContext = new AudioContext({
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.audioContext = new AudioCtx({
                 latencyHint: 'interactive',
                 sampleRate: 44100, //this number has to match what's in gui.cpp
             });
@@ -325,7 +325,22 @@ class MyClass {
             this.audioReadPosition = 0;
             this.audioBackOffCounter = 0;
             this.audioThreadLock = false;
-    
+            this.audioWarmupFrames = 3;
+            this.lastAudioL = 0;
+            this.lastAudioR = 0;
+
+            // Auto-resume audioContext on any initial user touch or interaction
+            if (this.audioContext.state === 'suspended') {
+                const resumeAudio = () => {
+                    if (this.audioContext && this.audioContext.state === 'suspended') {
+                        this.audioContext.resume().catch(() => {});
+                    }
+                };
+                window.addEventListener('click', resumeAudio, { once: true, passive: true });
+                window.addEventListener('touchstart', resumeAudio, { once: true, passive: true });
+                window.addEventListener('touchend', resumeAudio, { once: true, passive: true });
+                window.addEventListener('keydown', resumeAudio, { once: true, passive: true });
+            }
     
             //emulator is synced to the OnAudioProcess event because it's way
             //more accurate than emscripten_set_main_loop or RAF
@@ -351,21 +366,35 @@ class MyClass {
     //data to play so we just keep streaming it from the emulator
     AudioProcessRecurring(audioProcessingEvent){
 
-        //I think this method is thread safe but just in case
         if (this.audioThreadLock || this.rivetsData.beforeEmulatorStarted)
         {
-            // console.log('audio thread dupe');
             return;
         }
         
         this.audioThreadLock = true;
 
+        const outputBuffer = audioProcessingEvent.outputBuffer;
+        const outputData1 = outputBuffer.getChannelData(0);
+        const outputData2 = outputBuffer.getChannelData(1);
 
+        // Guard against detached ArrayBuffer after Emscripten WASM heap resize
+        if (!this.audioBufferResampled || this.audioBufferResampled.buffer.byteLength === 0) {
+            try {
+                this.audioBufferResampled = new Int16Array(
+                    Module.HEAP16.buffer,
+                    Module._neilGetSoundBufferResampledAddress(),
+                    64000
+                );
+            } catch (e) {
+                this.audioThreadLock = false;
+                return;
+            }
+        }
 
-        var sampleRate = audioProcessingEvent.outputBuffer.sampleRate;
-        let outputBuffer = audioProcessingEvent.outputBuffer;
-        let outputData1 = outputBuffer.getChannelData(0);
-        let outputData2 = outputBuffer.getChannelData(1);
+        // Auto-resume if mobile browser suspended audio context
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            this.audioContext.resume().catch(() => {});
+        }
 
         if (this.rivetsData.disableAudioSync)
         {
@@ -373,57 +402,90 @@ class MyClass {
         }
         else
         {
-            Module._runMainLoop();
+            // Initial warm-up: pre-fill cushion (~3 frames = 4410 entries / 50ms)
+            if (this.audioWarmupFrames > 0) {
+                while (this.audioWarmupFrames > 0) {
+                    Module._runMainLoop();
+                    this.audioWarmupFrames--;
+                }
+            }
 
             this.audioWritePosition = Module._neilGetAudioWritePosition();
-    
-    
-            if (!this.hasEnoughSamples())
-            {
+            const rPos = this.audioReadPosition;
+            const wPos = this.audioWritePosition;
+            const curAvailable = (wPos >= rPos) ? (wPos - rPos) : (64000 - rPos + wPos);
+
+            // Buffer consumption per callback is AUDIOBUFFSIZE * 2 (2048 entries for stereo)
+            // One N64 frame produces ~1470 entries (735 samples at 44.1kHz).
+            // Adaptive schedule targets a silky 35ms - 75ms buffer cushion (3072 - 6615 entries):
+            if (curAvailable < 2048) {
+                // Emergency underrun prevention: run 2 frames to immediately rebuild cushion
+                Module._runMainLoop();
+                Module._runMainLoop();
+            } else if (curAvailable < 4410) {
+                // Cushion slightly below target (~50ms): run 1 frame and check if 2nd is needed
+                Module._runMainLoop();
+                this.audioWritePosition = Module._neilGetAudioWritePosition();
+                const afterAvail = (this.audioWritePosition >= rPos) ? (this.audioWritePosition - rPos) : (64000 - rPos + this.audioWritePosition);
+                if (afterAvail < 3000) {
+                    Module._runMainLoop();
+                }
+            } else if (curAvailable >= 7350) {
+                // Buffer running ahead (>83ms): skip running emulator frame this tick to let audio catch up naturally
+            } else {
+                // Optimal golden zone (4410 .. 7350 entries): run exactly 1 frame (solid 60 FPS lock)
                 Module._runMainLoop();
             }
-    
+
             this.audioWritePosition = Module._neilGetAudioWritePosition();
         }
-
-    
-
-        // if (!this.hasEnoughSamples())
-        //     console.log('not enough samples');
-
-        // console.log('Write: ' + this.audioWritePosition + ' Read: ' + this.audioReadPosition);
 
         let hadSkip = false;
         const invScale = 0.000030517578125; // 1 / 32768.0
         const buf = this.audioBufferResampled;
         let rPos = this.audioReadPosition;
         const wPos = this.audioWritePosition;
+        let lastL = this.lastAudioL || 0;
+        let lastR = this.lastAudioR || 0;
 
         for (let sample = 0; sample < AUDIOBUFFSIZE; sample++) {
             if (wPos !== rPos) {
-                outputData1[sample] = buf[rPos] * invScale;
-                outputData2[sample] = buf[rPos + 1] * invScale;
+                lastL = buf[rPos] * invScale;
+                lastR = buf[rPos + 1] * invScale;
+                outputData1[sample] = lastL;
+                outputData2[sample] = lastR;
                 rPos += 2;
                 if (rPos >= 64000) {
                     rPos = 0;
                 }
             } else {
-                outputData1[sample] = 0;
-                outputData2[sample] = 0;
+                // Buffer underrun: apply smooth exponential decay towards 0
+                // Eliminates harsh digital clicks and DC pops on mobile thread jitter
+                lastL *= 0.92;
+                lastR *= 0.92;
+                outputData1[sample] = lastL;
+                outputData2[sample] = lastR;
                 hadSkip = true;
             }
         }
+        this.lastAudioL = lastL;
+        this.lastAudioR = lastR;
         this.audioReadPosition = rPos;
 
-        if (hadSkip)
+        if (hadSkip) {
             this.rivetsData.audioSkipCount++;
+            // Rapidly re-prime cushion on next callback to escape vicious starvation loop
+            this.audioWarmupFrames = 2;
+        }
 
         // O(1) buffer calculation (replaces 64,000 iteration loop on every audio tick)
         const audioBufferRemaining = (wPos >= rPos)
             ? (wPos - rPos)
             : (64000 - rPos + wPos);
 
-        this.setRemainingAudio(audioBufferRemaining);
+        if (this.setRemainingAudio) {
+            try { this.setRemainingAudio(audioBufferRemaining); } catch (e) {}
+        }
         
         this.audioThreadLock = false;
     }
@@ -1236,7 +1298,7 @@ class MyClass {
     retrieveSettings(){
         this.loadCheats();
         this.setFromLocalStorage('n64wasm-showfps','showFPS');
-        this.setFromLocalStorage('n64wasm-disableaudiosyncnew','disableAudioSync');
+        this.rivetsData.disableAudioSync = false; // Always lock to 60 FPS audio clock
         this.setFromLocalStorage('n64wasm-swapSticks','swapSticks');
         this.setFromLocalStorage('n64wasm-invert2P','invert2P');
         this.setFromLocalStorage('n64wasm-invert3P','invert3P');

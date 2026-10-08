@@ -180,6 +180,9 @@
             transform: translateZ(0);
             will-change: transform;
             backface-visibility: hidden;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
         }
 
         #guestVideo {
@@ -1267,6 +1270,13 @@
             }
             const pill = document.getElementById('unmutePill');
             if (pill) pill.style.display = 'none';
+
+            // Auto-resume Web Audio AudioContext for Solo / Host emulator play
+            if (window.myApp && window.myApp.audioContext && window.myApp.audioContext.state === 'suspended') {
+                window.myApp.audioContext.resume().then(() => {
+                    console.log('Web Audio AudioContext resumed successfully');
+                }).catch(err => console.warn('Could not resume AudioContext:', err));
+            }
         }
 
         function showUnmuteNotice() {
@@ -1458,6 +1468,7 @@
         }
 
         function startHostGame() {
+            unmuteAudioOnFirstTouch();
             const container = document.getElementById('loadingProgressContainer');
             if (container) container.style.display = 'block';
             const buttons = document.getElementById('startButtonsContainer');
