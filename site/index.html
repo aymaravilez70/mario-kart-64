@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0c0d12">
     <title>Mario Kart 64 Web - Multijugador Online</title>
     <meta name="description" content="Juega Mario Kart 64 directamente desde tu navegador en 60 FPS con multijugador online P2P sin descargas.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>">
@@ -249,7 +250,7 @@
             justify-content: center;
             padding: 30px;
             text-align: center;
-            z-index: 10;
+            z-index: 50;
         }
 
         .poster-icon {
@@ -461,17 +462,14 @@
 
         /* MOBILE TOUCH CONTROLS & VIRTUAL JOYSTICK */
         .touch-overlay {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 30;
             display: none;
             user-select: none;
             -webkit-user-select: none;
+            touch-action: none;
         }
 
-        .touch-overlay.active {
-            display: block;
+        .touch-overlay.active, .touch-overlay.force-active {
+            display: flex;
         }
 
         /* Joystick Base & Knob (Left) */
@@ -595,11 +593,12 @@
             box-shadow: 0 4px 18px rgba(41, 121, 255, 0.5);
         }
 
-        .touch-start-cluster {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+        .touch-start-cluster, .touch-center-cluster {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
             pointer-events: auto;
             z-index: 35;
         }
@@ -609,19 +608,45 @@
             backdrop-filter: blur(8px);
             border: 1px solid rgba(255, 255, 255, 0.4);
             color: white;
-            padding: 8px 22px;
+            padding: 8px 20px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
             letter-spacing: 1px;
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
             touch-action: none;
+            transition: transform 0.08s ease, background 0.15s ease;
+            white-space: nowrap;
         }
 
         .touch-btn-start:active, .touch-btn-start.pressed {
             transform: scale(0.92);
             background: var(--accent-red);
+        }
+
+        .touch-btn-turbo {
+            background: rgba(255, 145, 0, 0.15);
+            border: 1px solid rgba(255, 145, 0, 0.4);
+            color: #ffbe1a;
+            padding: 5px 14px;
+            border-radius: 16px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+            touch-action: none;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .touch-btn-turbo.active, .touch-btn-turbo:active {
+            transform: scale(0.92);
+            background: linear-gradient(135deg, #ff9100, #ff6d00);
+            color: #fff;
+            border-color: #ff9100;
+            box-shadow: 0 4px 14px rgba(255, 145, 0, 0.6);
         }
 
         /* Floating Audio Unmute Pill */
@@ -702,18 +727,52 @@
             .mobile-landscape-toggle {
                 display: flex !important;
             }
+            .touch-overlay {
+                position: fixed !important;
+                inset: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                pointer-events: none !important;
+                z-index: 200 !important;
+                display: block !important;
+                background: transparent !important;
+                border: none !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .touch-overlay.force-hidden {
+                display: none !important;
+            }
             .joystick-container {
+                position: absolute !important;
                 bottom: 14px !important;
                 left: 14px !important;
                 width: 120px !important;
                 height: 120px !important;
+                pointer-events: auto !important;
             }
             .touch-buttons-cluster {
+                position: absolute !important;
                 bottom: 14px !important;
                 right: 14px !important;
+                display: grid !important;
                 grid-template-columns: repeat(2, 54px) !important;
                 grid-template-rows: repeat(2, 54px) !important;
                 gap: 10px !important;
+                pointer-events: auto !important;
+            }
+            .touch-center-cluster {
+                position: absolute !important;
+                top: 14px !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 12px !important;
+                align-items: center !important;
+                pointer-events: auto !important;
             }
             .touch-btn {
                 width: 54px !important;
@@ -721,49 +780,172 @@
             }
         }
 
-        /* MOBILE PORTRAIT MODE */
-        @media (max-width: 768px) and (orientation: portrait) {
+        /* MOBILE PORTRAIT MODE: Nintendo handheld console experience */
+        @media (max-width: 950px) and (orientation: portrait) {
             header {
-                padding: 10px 14px;
+                padding: 8px 12px !important;
+                min-height: 48px !important;
+            }
+            .brand-badge {
+                display: none !important;
             }
             .brand-title {
-                font-size: 16px;
+                font-size: 15px !important;
+            }
+            .header-actions {
+                gap: 6px !important;
+            }
+            .badge-status {
+                padding: 4px 8px !important;
+                font-size: 11px !important;
+            }
+            .header-btn-text {
+                display: none !important;
+            }
+            .header-btn {
+                padding: 6px 10px !important;
+                font-size: 13px !important;
+                min-width: 36px !important;
+            }
+            main {
+                padding: 10px 12px 30px !important;
             }
             .stage-wrapper {
-                border-radius: 12px;
-                max-width: 100vw;
-                width: 100%;
-                aspect-ratio: 16 / 9;
+                border-radius: 16px !important;
+                max-width: 480px !important;
+                width: 100% !important;
+                aspect-ratio: 16 / 9 !important;
+                margin: 0 auto !important;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+            }
+            .start-overlay {
+                padding: 12px 10px !important;
+            }
+            .poster-icon {
+                font-size: 28px !important;
+                margin-bottom: 2px !important;
+            }
+            .poster-title {
+                font-size: 17px !important;
+                margin-bottom: 4px !important;
+            }
+            .poster-desc {
+                font-size: 11px !important;
+                line-height: 1.35 !important;
+                margin-bottom: 12px !important;
+                max-width: 310px !important;
+            }
+            .btn-start-host, .btn-start-online {
+                padding: 9px 16px !important;
+                font-size: 12px !important;
+                border-radius: 8px !important;
             }
             .phone-rotate-hint {
-                display: block !important;
+                display: flex !important;
+            }
+            .touch-overlay {
+                display: flex !important;
+                position: relative !important;
+                width: 100% !important;
+                max-width: 480px !important;
+                margin: 8px auto 0 !important;
+                background: linear-gradient(180deg, #151824 0%, #0c0e14 100%) !important;
+                border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                border-radius: 20px !important;
+                padding: 14px 10px !important;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                box-sizing: border-box !important;
+                user-select: none !important;
+                -webkit-user-select: none !important;
+                touch-action: none !important;
+            }
+            .touch-overlay.force-hidden {
+                display: none !important;
             }
             .joystick-container {
-                bottom: 12px;
-                left: 12px;
-                width: 120px;
-                height: 120px;
+                position: relative !important;
+                bottom: auto !important;
+                left: auto !important;
+                width: 116px !important;
+                height: 116px !important;
+                flex-shrink: 0 !important;
             }
             .joystick-knob {
-                width: 50px;
-                height: 50px;
+                width: 48px !important;
+                height: 48px !important;
+            }
+            .touch-center-cluster {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                gap: 8px !important;
+                position: relative !important;
+                top: auto !important;
+                left: auto !important;
+                transform: none !important;
             }
             .touch-buttons-cluster {
-                bottom: 12px;
-                right: 12px;
-                grid-template-columns: repeat(2, 54px);
-                grid-template-rows: repeat(2, 54px);
-                gap: 10px;
+                position: relative !important;
+                bottom: auto !important;
+                right: auto !important;
+                display: grid !important;
+                grid-template-columns: repeat(2, 50px) !important;
+                grid-template-rows: repeat(2, 50px) !important;
+                gap: 8px !important;
+                flex-shrink: 0 !important;
             }
             .touch-btn {
-                width: 54px;
-                height: 54px;
+                width: 50px !important;
+                height: 50px !important;
             }
             .touch-btn span {
-                font-size: 16px;
+                font-size: 17px !important;
             }
             .touch-btn small {
-                font-size: 8px;
+                font-size: 8px !important;
+            }
+            .toolbar {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 8px !important;
+                width: 100% !important;
+                max-width: 480px !important;
+                margin-top: 10px !important;
+            }
+            .toolbar-btn-invite {
+                grid-column: 1 / -1 !important;
+                padding: 12px !important;
+                font-size: 13px !important;
+            }
+            .toolbar-btn {
+                padding: 10px 8px !important;
+                font-size: 12px !important;
+            }
+        }
+
+        /* DESKTOP MODE (Touch controls hidden by default) */
+        @media (min-width: 951px) {
+            .touch-overlay {
+                display: none;
+            }
+            .touch-overlay.force-active {
+                display: flex !important;
+                position: relative;
+                width: 100%;
+                max-width: 520px;
+                margin: 16px auto 0;
+                background: linear-gradient(180deg, #151824 0%, #0c0e14 100%);
+                border: 1px solid var(--border);
+                border-radius: 20px;
+                padding: 16px 20px;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .phone-rotate-hint {
+                display: none !important;
             }
         }
 
@@ -784,13 +966,13 @@
         <div class="header-actions">
             <div id="statusBadge" class="badge-status">
                 <div id="statusDot" class="dot-pulse"></div>
-                <span id="statusText">Cargando Motor...</span>
+                <span id="statusText">Cargando...</span>
             </div>
-            <button id="btnAspectFit" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="toggleAspectFit()">
-                ✂️ Recortar (100%)
+            <button id="btnAspectFit" class="btn btn-secondary header-btn" title="Ajuste de Pantalla" onclick="toggleAspectFit()">
+                <span class="header-btn-icon">✂️</span> <span class="header-btn-text">Recortar</span>
             </button>
-            <button id="btnFullscreen" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="toggleFullscreen()">
-                📺 Pantalla Completa
+            <button id="btnFullscreen" class="btn btn-secondary header-btn" title="Pantalla Completa" onclick="toggleFullscreen()">
+                <span class="header-btn-icon">📺</span> <span class="header-btn-text">Pantalla</span>
             </button>
         </div>
     </header>
@@ -839,12 +1021,12 @@
                         <div id="loadingProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ff3344, #ffbe1a); transition: width 0.2s ease;"></div>
                     </div>
                 </div>
-                <div id="startButtonsContainer" style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
-                    <button class="btn btn-primary" id="btnStartGame" onclick="startHostGame()">
+                <div id="startButtonsContainer" style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                    <button class="btn btn-primary btn-start-host" id="btnStartGame" onclick="startHostGame()">
                         ▶ Iniciar Carrera (Host)
                     </button>
-                    <button class="btn btn-green" id="btnCreateRoomDirect" onclick="startHostAndRoom()">
-                        🌐 Iniciar y Crear Sala Online
+                    <button class="btn btn-green btn-start-online" id="btnCreateRoomDirect" onclick="startHostAndRoom()">
+                        🌐 Crear Sala Online
                     </button>
                 </div>
             </div>
@@ -853,65 +1035,67 @@
             <div class="unmute-pill" id="unmutePill" style="display: none;" onclick="unmuteAudioOnFirstTouch()">
                 🔊 Toca aquí para activar sonido
             </div>
+        </div>
 
-            <!-- Mobile Virtual Controls & Analog Joystick -->
-            <div class="touch-overlay" id="touchOverlay">
-                <!-- Virtual Joystick (Left) -->
-                <div class="joystick-container" id="joystickContainer">
-                    <div class="joystick-base" id="joystickBase">
-                        <div class="joystick-knob" id="joystickKnob"></div>
-                    </div>
+        <!-- Phone Orientation Hint Banner -->
+        <div class="phone-rotate-hint" id="phoneRotateHint">
+            <span>🔄 Gira tu teléfono a horizontal para pantalla completa arcade</span>
+        </div>
+
+        <!-- Dedicated Handheld Controller Pad (Mobile Touch Controls) -->
+        <div class="touch-overlay" id="touchOverlay">
+            <!-- Virtual Joystick (Left) -->
+            <div class="joystick-container" id="joystickContainer">
+                <div class="joystick-base" id="joystickBase">
+                    <div class="joystick-knob" id="joystickKnob"></div>
                 </div>
+            </div>
 
-                <!-- Action Buttons Cluster (Right) -->
-                <div class="touch-buttons-cluster" id="touchButtonsCluster">
-                    <div class="touch-btn touch-btn-z" id="tBtnZ" data-action="z">
-                        <span>Z</span>
-                        <small>Ítem</small>
-                    </div>
-                    <div class="touch-btn touch-btn-r" id="tBtnR" data-action="r">
-                        <span>R</span>
-                        <small>Derrape</small>
-                    </div>
-                    <div class="touch-btn touch-btn-b" id="tBtnB" data-action="b">
-                        <span>B</span>
-                        <small>Freno</small>
-                    </div>
-                    <div class="touch-btn touch-btn-a" id="tBtnA" data-action="a">
-                        <span>A</span>
-                        <small>Gas</small>
-                    </div>
+            <!-- Center Controls: START & Turbo Pill -->
+            <div class="touch-center-cluster" id="touchCenterCluster">
+                <button class="touch-btn-start" id="tBtnStart" data-action="start">START</button>
+                <button class="touch-btn-turbo" id="tBtnTurbo" onclick="toggleTurboSpeed()">⚡ TURBO</button>
+            </div>
+
+            <!-- Action Buttons Cluster (Right) -->
+            <div class="touch-buttons-cluster" id="touchButtonsCluster">
+                <div class="touch-btn touch-btn-z" id="tBtnZ" data-action="z">
+                    <span>Z</span>
+                    <small>Ítem</small>
                 </div>
-
-                <!-- Top Start Button for Mobile -->
-                <div class="touch-start-cluster" id="touchStartCluster">
-                    <button class="touch-btn-start" id="tBtnStart" data-action="start">START</button>
+                <div class="touch-btn touch-btn-r" id="tBtnR" data-action="r">
+                    <span>R</span>
+                    <small>Derrape</small>
+                </div>
+                <div class="touch-btn touch-btn-b" id="tBtnB" data-action="b">
+                    <span>B</span>
+                    <small>Freno</small>
+                </div>
+                <div class="touch-btn touch-btn-a" id="tBtnA" data-action="a">
+                    <span>A</span>
+                    <small>Gas</small>
                 </div>
             </div>
         </div>
 
-        <div class="phone-rotate-hint" style="display: none; font-size: 12px; color: var(--accent-gold); margin-top: 10px; text-align: center; font-weight: 600;">
-            🔄 Gira tu teléfono a horizontal para pantalla completa edge-to-edge
-        </div>
-
         <!-- Controls Toolbar -->
         <div class="toolbar" id="mainToolbar">
-            <button class="btn btn-green" id="btnInvite" onclick="toggleInviteModal()">
+            <button class="btn btn-green toolbar-btn-invite" id="btnInvite" onclick="toggleInviteModal()">
                 🌐 Invitar Amigo (Crear Sala)
             </button>
-            <button class="btn btn-secondary" id="btnToggleTouch" onclick="toggleTouchControls()">
+            <button class="btn btn-secondary toolbar-btn" id="btnToggleTouch" onclick="toggleTouchControls()">
                 📱 Joystick: ON/OFF
             </button>
-            <button class="btn btn-secondary" id="btnTurbo" onclick="toggleTurboSpeed()">
+            <button class="btn btn-secondary toolbar-btn" id="btnTurbo" onclick="toggleTurboSpeed()">
                 ⚡ Turbo: 60 FPS
             </button>
-            <button class="btn btn-secondary" id="btnLocalP2" onclick="toggleLocal2P()">
-                👥 Modo 2 Jugadores (Local)
+            <button class="btn btn-secondary toolbar-btn" id="btnLocalP2" onclick="toggleLocal2P()">
+                👥 Modo 2P Local
             </button>
-            <button class="btn btn-secondary" onclick="toggleControlsModal()">
-                🎮 Guía de Controles
+            <button class="btn btn-secondary toolbar-btn" onclick="toggleControlsModal()">
+                🎮 Guía Controles
             </button>
-            <button class="btn btn-secondary" onclick="resetGame()">
+            <button class="btn btn-secondary toolbar-btn" onclick="resetGame()">
                 🔄 Reiniciar
             </button>
         </div>
@@ -962,7 +1146,7 @@
                     <div class="key-row"><span>Frenar (B)</span><span class="key-cap">Botón Rojo [B]</span></div>
                     <div class="key-row"><span>Usar Ítem (Z)</span><span class="key-cap">Botón Amarillo [Z]</span></div>
                     <div class="key-row"><span>Derrape (R)</span><span class="key-cap">Botón Azul [R]</span></div>
-                    <div class="key-row"><span>Pausa / Start</span><span class="key-cap">Botón [START] (Arriba)</span></div>
+                    <div class="key-row"><span>Pausa / Start</span><span class="key-cap">Botón [START] (Centro)</span></div>
                 </div>
                 <div class="control-item">
                     <h4>Mandos Físicos (USB / Bluetooth)</h4>
@@ -1040,24 +1224,39 @@
             const overlay = document.getElementById('touchOverlay');
             const btn = document.getElementById('btnToggleTouch');
             if (touchControlsActive) {
-                overlay.classList.add('active');
-                if (btn) btn.style.background = 'linear-gradient(135deg, #00c853, #009624)';
+                if (overlay) {
+                    overlay.classList.remove('force-hidden');
+                    overlay.classList.add('force-active');
+                }
+                if (btn) {
+                    btn.style.background = 'linear-gradient(135deg, #00c853, #009624)';
+                    btn.innerText = '📱 Joystick: ACTIVO';
+                }
                 toastr.success('Joystick en pantalla ACTIVADO');
             } else {
-                overlay.classList.remove('active');
-                if (btn) btn.style.background = 'var(--bg-card)';
-                toastr.info('Joystick en pantalla desactivado');
+                if (overlay) {
+                    overlay.classList.remove('force-active');
+                    overlay.classList.add('force-hidden');
+                }
+                if (btn) {
+                    btn.style.background = 'var(--bg-card)';
+                    btn.innerText = '📱 Joystick: OCULTO';
+                }
+                toastr.info('Joystick en pantalla oculto');
             }
         }
 
         function checkAutoEnableTouch() {
             const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth <= 900;
+            const overlay = document.getElementById('touchOverlay');
+            const btn = document.getElementById('btnToggleTouch');
             if (isTouch) {
                 touchControlsActive = true;
-                const overlay = document.getElementById('touchOverlay');
-                if (overlay) overlay.classList.add('active');
-                const btn = document.getElementById('btnToggleTouch');
-                if (btn) btn.style.background = 'linear-gradient(135deg, #00c853, #009624)';
+                if (overlay) overlay.classList.remove('force-hidden');
+                if (btn) {
+                    btn.style.background = 'linear-gradient(135deg, #00c853, #009624)';
+                    btn.innerText = '📱 Joystick: ACTIVO';
+                }
             }
         }
 
@@ -1483,9 +1682,14 @@
                 window.myApp.toggleDoubleSpeed();
                 const isDouble = window.myApp.rivetsData && window.myApp.rivetsData.doubleSpeed;
                 const btn = document.getElementById('btnTurbo');
+                const tBtn = document.getElementById('tBtnTurbo');
                 if (btn) {
-                    btn.innerText = isDouble ? '⚡ Turbo: ACTIVADO' : '⚡ Turbo: 60 FPS';
+                    btn.innerText = isDouble ? '⚡ Turbo: ACTIVO' : '⚡ Turbo: 60 FPS';
                     btn.style.background = isDouble ? 'linear-gradient(135deg, #ff9100, #ff6d00)' : 'var(--bg-card)';
+                }
+                if (tBtn) {
+                    if (isDouble) tBtn.classList.add('active');
+                    else tBtn.classList.remove('active');
                 }
                 toastr.info(isDouble ? '⚡ Modo Turbo ACTIVADO (Máxima Fluidez)' : 'Velocidad Estándar');
             } else {
