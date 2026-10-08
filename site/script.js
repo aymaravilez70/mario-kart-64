@@ -2,7 +2,8 @@ function getSystemDarkMode() {
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-var AUDIOBUFFSIZE = 1024;
+const isMobileDevice = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || Math.min(window.innerWidth, window.innerHeight) < 700;
+var AUDIOBUFFSIZE = isMobileDevice ? 2048 : 1024;
 
 class MyClass {
     constructor() {
@@ -199,8 +200,13 @@ class MyClass {
     }
 
     detectMobile(){
-        let isIphone = navigator.userAgent.toLocaleLowerCase().includes('iphone');
-        let isIpad = navigator.userAgent.toLocaleLowerCase().includes('ipad');
+        const ua = navigator.userAgent.toLocaleLowerCase();
+        const isIphone = ua.includes('iphone');
+        const isIpad = ua.includes('ipad');
+        const isAndroid = ua.includes('android');
+        const isMobileUA = isIphone || isIpad || isAndroid || ua.includes('mobile');
+        const isSmallScreen = Math.min(window.innerWidth, window.innerHeight) < 768;
+
         if (isIphone || isIpad)
         {
             this.iosMode = true;
@@ -210,13 +216,9 @@ class MyClass {
                 iosVersion = iosVersion.substring(0, iosVersion.indexOf('_'));
                 this.iosVersion = parseInt(iosVersion);
             } catch (err) { }
-
-            //don't need this anymore
-            // if (this.iosVersion > 15) {
-            //     this.rivetsData.iosShowWarning = true;
-            // }
         }
-        if (window.innerWidth < 600 || isIphone)
+
+        if (isMobileUA || isSmallScreen)
             this.mobileMode = true;
         else
             this.mobileMode = false;
@@ -337,25 +339,12 @@ class MyClass {
     }
 
     hasEnoughSamples(){
-
-        let readPositionTemp = this.audioReadPosition;
-        let enoughSamples = true;
-        for (let sample = 0; sample < AUDIOBUFFSIZE; sample++)
-        {
-            if (this.audioWritePosition != readPositionTemp) {
-                readPositionTemp += 2;
-
-                //wrap back around within the ring buffer
-                if (readPositionTemp == 64000) {
-                    readPositionTemp = 0;
-                }
-            }
-            else {
-                enoughSamples = false;
-            }
-        }
-
-        return enoughSamples;
+        const wPos = this.audioWritePosition;
+        const rPos = this.audioReadPosition;
+        const available = (wPos >= rPos)
+            ? (wPos - rPos)
+            : (64000 - rPos + wPos);
+        return available >= (AUDIOBUFFSIZE * 2);
     }
 
     //this method keeps getting called when it needs more audio
@@ -405,65 +394,38 @@ class MyClass {
         // console.log('Write: ' + this.audioWritePosition + ' Read: ' + this.audioReadPosition);
 
         let hadSkip = false;
+        const invScale = 0.000030517578125; // 1 / 32768.0
+        const buf = this.audioBufferResampled;
+        let rPos = this.audioReadPosition;
+        const wPos = this.audioWritePosition;
 
-
-        //the bytes are arranged L,R,L,R,etc.... for each speaker
         for (let sample = 0; sample < AUDIOBUFFSIZE; sample++) {
-
-            if (this.audioWritePosition != this.audioReadPosition) {
-                outputData1[sample] = (this.audioBufferResampled[this.audioReadPosition] / 32768);
-                outputData2[sample] = (this.audioBufferResampled[this.audioReadPosition + 1] / 32768);
-
-                this.audioReadPosition += 2;
-
-                //wrap back around within the ring buffer
-                if (this.audioReadPosition == 64000) {
-                    this.audioReadPosition = 0;
+            if (wPos !== rPos) {
+                outputData1[sample] = buf[rPos] * invScale;
+                outputData2[sample] = buf[rPos + 1] * invScale;
+                rPos += 2;
+                if (rPos >= 64000) {
+                    rPos = 0;
                 }
-            }
-            else {
-                //if there's nothing to play then just play silence
+            } else {
                 outputData1[sample] = 0;
                 outputData2[sample] = 0;
-
-                //if we caught up on samples then back off
-                //for 2 frames to buffer some audio
-                // if (this.audioBackOffCounter == 0) {
-                //     this.audioBackOffCounter = 2;
-                // }
-
                 hadSkip = true;
-
             }
-
         }
+        this.audioReadPosition = rPos;
 
-        
         if (hadSkip)
             this.rivetsData.audioSkipCount++;
 
-        //calculate remaining audio in buffer
-        let audioBufferRemaining = 0;
-        let readPositionTemp = this.audioReadPosition;
-        let writePositionTemp = this.audioWritePosition;
-        for(let i = 0; i < 64000; i++)
-        {
-            if (readPositionTemp != writePositionTemp)
-            {
-                readPositionTemp += 2;
-                audioBufferRemaining += 2;
-
-                if (readPositionTemp == 64000) {
-                    readPositionTemp = 0;
-                }
-            }
-        }
+        // O(1) buffer calculation (replaces 64,000 iteration loop on every audio tick)
+        const audioBufferRemaining = (wPos >= rPos)
+            ? (wPos - rPos)
+            : (64000 - rPos + wPos);
 
         this.setRemainingAudio(audioBufferRemaining);
-        //myClass.showToast("Buffer: " + audioBufferRemaining);
         
         this.audioThreadLock = false;
-
     }
 
     beforeRun(){
@@ -546,8 +508,9 @@ class MyClass {
         //mouse mode
         if (this.rivetsData.mouseMode) configString += "1" + "\r\n"; else configString += "0" + "\r\n";
 
-        //use vbo
-        if (this.iosMode || this.rivetsData.useVBO) configString += "1" + "\r\n"; else configString += "0" + "\r\n";
+        //use vbo (hardware-accelerated vertex buffers on GPU for mobile and desktop)
+        const enableVBO = this.iosMode || this.mobileMode || this.rivetsData.useVBO || true;
+        if (enableVBO) configString += "1" + "\r\n"; else configString += "0" + "\r\n";
 
         //rice plugin
         if (this.rivetsData.ricePlugin) configString += "1" + "\r\n"; else configString += "0" + "\r\n";

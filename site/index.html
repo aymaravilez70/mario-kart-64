@@ -176,6 +176,9 @@
             height: 100%;
             object-fit: cover; /* Recortar bordes para llenar 100% de la pantalla sin barras */
             display: block;
+            transform: translateZ(0);
+            will-change: transform;
+            backface-visibility: hidden;
         }
 
         #guestVideo {
@@ -187,6 +190,9 @@
             display: none;
             background: #000;
             z-index: 1;
+            transform: translateZ(0);
+            will-change: transform;
+            backface-visibility: hidden;
         }
 
         /* Mode: 4:3 Clásico si el usuario desactiva el recorte */
@@ -507,7 +513,8 @@
             border: 2px solid rgba(255, 255, 255, 0.9);
             box-shadow: 0 4px 18px rgba(255, 51, 68, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.4);
             position: absolute;
-            transform: translate(0px, 0px);
+            transform: translate3d(0px, 0px, 0);
+            will-change: transform;
             pointer-events: none;
         }
 
@@ -539,6 +546,7 @@
             touch-action: none;
             transition: transform 0.08s ease, filter 0.08s ease;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+            will-change: transform, filter;
         }
 
         .touch-btn:active, .touch-btn.pressed {
@@ -808,6 +816,7 @@
                 <h3 style="color: #fff; font-size: 18px; font-weight: 800; margin-bottom: 6px;">⚙️ Opciones de Pantalla</h3>
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 380px;">
                     <button class="btn btn-secondary" style="width: 100%;" onclick="toggleAspectFit()">✂️ Alternar Recorte (100% / 4:3)</button>
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="toggleTurboSpeed()">⚡ Modo Turbo (60 FPS Rendimiento)</button>
                     <button class="btn btn-secondary" style="width: 100%;" onclick="toggleInviteModal(); toggleLandscapeMenu();">🌐 Invitar Amigo (Crear Sala)</button>
                     <button class="btn btn-secondary" style="width: 100%;" onclick="resetGame()">🔄 Reiniciar Juego</button>
                     <button class="btn btn-primary" style="width: 100%; margin-top: 6px;" onclick="toggleLandscapeMenu()">✕ Continuar Carrera</button>
@@ -892,6 +901,9 @@
             </button>
             <button class="btn btn-secondary" id="btnToggleTouch" onclick="toggleTouchControls()">
                 📱 Joystick: ON/OFF
+            </button>
+            <button class="btn btn-secondary" id="btnTurbo" onclick="toggleTurboSpeed()">
+                ⚡ Turbo: 60 FPS
             </button>
             <button class="btn btn-secondary" id="btnLocalP2" onclick="toggleLocal2P()">
                 👥 Modo 2 Jugadores (Local)
@@ -1072,6 +1084,7 @@
             let centerX = 0;
             let centerY = 0;
             const maxRadius = 40; // max travel radius in px
+            const maxRadiusSq = 1600;
 
             function updateStick(xNorm, yNorm) {
                 if (isGuestMode) {
@@ -1096,14 +1109,17 @@
                 if (e.pointerId !== activePointerId) return;
                 const dx = e.clientX - centerX;
                 const dy = e.clientY - centerY;
-                const dist = Math.hypot(dx, dy);
-                const clampedDist = Math.min(dist, maxRadius);
-                const angle = Math.atan2(dy, dx);
+                const distSq = dx * dx + dy * dy;
 
-                const clampedX = Math.cos(angle) * clampedDist;
-                const clampedY = Math.sin(angle) * clampedDist;
+                let clampedX = dx;
+                let clampedY = dy;
+                if (distSq > maxRadiusSq) {
+                    const factor = maxRadius / Math.sqrt(distSq);
+                    clampedX = dx * factor;
+                    clampedY = dy * factor;
+                }
 
-                knob.style.transform = `translate(${clampedX}px, ${clampedY}px)`;
+                knob.style.transform = `translate3d(${clampedX}px, ${clampedY}px, 0)`;
                 knob.style.transition = 'none';
 
                 const xNorm = clampedX / maxRadius;
@@ -1111,12 +1127,12 @@
                 updateStick(xNorm, yNorm);
             }
 
-            container.addEventListener('pointermove', handlePointerMove);
+            container.addEventListener('pointermove', handlePointerMove, { passive: true });
 
             function handlePointerEnd(e) {
                 if (e.pointerId !== activePointerId) return;
                 activePointerId = null;
-                knob.style.transform = 'translate(0px, 0px)';
+                knob.style.transform = 'translate3d(0px, 0px, 0)';
                 knob.style.transition = 'transform 0.15s ease-out';
                 updateStick(0, 0);
             }
@@ -1460,6 +1476,21 @@
             const m = document.getElementById('landscapeMenuModal');
             if (!m) return;
             m.style.display = (m.style.display === 'flex' || m.style.display === 'block') ? 'none' : 'flex';
+        }
+
+        function toggleTurboSpeed() {
+            if (window.myApp && window.myApp.toggleDoubleSpeed) {
+                window.myApp.toggleDoubleSpeed();
+                const isDouble = window.myApp.rivetsData && window.myApp.rivetsData.doubleSpeed;
+                const btn = document.getElementById('btnTurbo');
+                if (btn) {
+                    btn.innerText = isDouble ? '⚡ Turbo: ACTIVADO' : '⚡ Turbo: 60 FPS';
+                    btn.style.background = isDouble ? 'linear-gradient(135deg, #ff9100, #ff6d00)' : 'var(--bg-card)';
+                }
+                toastr.info(isDouble ? '⚡ Modo Turbo ACTIVADO (Máxima Fluidez)' : 'Velocidad Estándar');
+            } else {
+                toastr.info('Inicia la carrera para activar Modo Turbo');
+            }
         }
 
         function toggleLocal2P() {

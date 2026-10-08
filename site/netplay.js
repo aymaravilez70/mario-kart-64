@@ -36,6 +36,36 @@ window.Netplay = (function() {
     };
 
     let guestInputLoopRunning = false;
+    let lastSentState = null;
+    let lastSentTime = 0;
+
+    function sendGuestInputIfChanged(force) {
+        if (!activeConn || !activeConn.open) return;
+        const now = performance.now();
+        let changed = false;
+
+        if (!lastSentState || force) {
+            changed = true;
+        } else {
+            for (let k in guestInput) {
+                if (guestInput[k] !== lastSentState[k]) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+
+        if (changed || (now - lastSentTime > 120)) {
+            try {
+                activeConn.send({
+                    type: 'INPUT',
+                    state: { ...guestInput }
+                });
+                lastSentState = { ...guestInput };
+                lastSentTime = now;
+            } catch (e) {}
+        }
+    }
 
     function startGuestInputLoop() {
         if (guestInputLoopRunning) return;
@@ -47,40 +77,40 @@ window.Netplay = (function() {
                 return;
             }
 
-            // Check if Guest has a physical gamepad plugged in
-            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            const gp = gamepads && gamepads[0] ? gamepads[0] : null;
+            // Only query physical gamepads if a real gamepad was detected
+            if (window._hasPhysicalGamepad && navigator.getGamepads) {
+                const gamepads = navigator.getGamepads();
+                const gp = gamepads && gamepads[0] ? gamepads[0] : null;
 
-            let finalState = { ...guestInput };
+                if (gp && gp.connected) {
+                    if (gp.buttons[0]) guestInput.a = !!gp.buttons[0].pressed;
+                    if (gp.buttons[2]) guestInput.b = !!gp.buttons[2].pressed;
+                    if (gp.buttons[4]) guestInput.z = !!gp.buttons[4].pressed; // LB
+                    if (gp.buttons[6]) guestInput.z = !!gp.buttons[6].pressed || guestInput.z; // LT
+                    if (gp.buttons[5]) guestInput.r = !!gp.buttons[5].pressed; // RB
+                    if (gp.buttons[7]) guestInput.r = !!gp.buttons[7].pressed || guestInput.r; // RT
+                    if (gp.buttons[9]) guestInput.start = !!gp.buttons[9].pressed;
+                    if (gp.buttons[12]) guestInput.up = !!gp.buttons[12].pressed;
+                    if (gp.buttons[13]) guestInput.down = !!gp.buttons[13].pressed;
+                    if (gp.buttons[14]) guestInput.left = !!gp.buttons[14].pressed;
+                    if (gp.buttons[15]) guestInput.right = !!gp.buttons[15].pressed;
 
-            if (gp && gp.connected) {
-                // Map standard physical gamepad buttons
-                if (gp.buttons[0] && gp.buttons[0].pressed) finalState.a = true;
-                if (gp.buttons[2] && gp.buttons[2].pressed) finalState.b = true;
-                if (gp.buttons[4] && gp.buttons[4].pressed) finalState.z = true; // LB
-                if (gp.buttons[6] && gp.buttons[6].pressed) finalState.z = true; // LT
-                if (gp.buttons[5] && gp.buttons[5].pressed) finalState.r = true; // RB
-                if (gp.buttons[7] && gp.buttons[7].pressed) finalState.r = true; // RT
-                if (gp.buttons[9] && gp.buttons[9].pressed) finalState.start = true;
-                if (gp.buttons[12] && gp.buttons[12].pressed) finalState.up = true;
-                if (gp.buttons[13] && gp.buttons[13].pressed) finalState.down = true;
-                if (gp.buttons[14] && gp.buttons[14].pressed) finalState.left = true;
-                if (gp.buttons[15] && gp.buttons[15].pressed) finalState.right = true;
-
-                // Analog stick
-                if (Math.abs(gp.axes[0]) > 0.15) finalState.stickX = gp.axes[0];
-                if (Math.abs(gp.axes[1]) > 0.15) finalState.stickY = gp.axes[1];
+                    if (gp.axes && gp.axes.length >= 2) {
+                        if (Math.abs(gp.axes[0]) > 0.15) {
+                            guestInput.stickX = gp.axes[0];
+                            guestInput.left = gp.axes[0] < -0.3;
+                            guestInput.right = gp.axes[0] > 0.3;
+                        }
+                        if (Math.abs(gp.axes[1]) > 0.15) {
+                            guestInput.stickY = gp.axes[1];
+                            guestInput.up = gp.axes[1] < -0.3;
+                            guestInput.down = gp.axes[1] > 0.3;
+                        }
+                    }
+                }
             }
 
-            try {
-                activeConn.send({
-                    type: 'INPUT',
-                    state: finalState
-                });
-            } catch (e) {
-                console.warn('Failed sending input', e);
-            }
-
+            sendGuestInputIfChanged(false);
             requestAnimationFrame(loop);
         }
 

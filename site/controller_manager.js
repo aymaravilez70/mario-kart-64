@@ -118,29 +118,48 @@
         }
     }
 
+    let hasPhysicalGamepad = false;
+    window._hasPhysicalGamepad = false;
+
+    window.addEventListener("gamepadconnected", () => {
+        hasPhysicalGamepad = true;
+        window._hasPhysicalGamepad = true;
+    });
+
+    window.addEventListener("gamepaddisconnected", () => {
+        try {
+            const pads = nativeGetGamepads ? nativeGetGamepads() : [];
+            hasPhysicalGamepad = false;
+            for (let i = 0; i < pads.length; i++) {
+                if (pads[i] && pads[i].connected) {
+                    hasPhysicalGamepad = true;
+                    break;
+                }
+            }
+        } catch(e) {
+            hasPhysicalGamepad = false;
+        }
+        window._hasPhysicalGamepad = hasPhysicalGamepad;
+    });
+
+    // Pre-allocated static array to avoid garbage collection overhead on every frame
+    const staticGamepadList = [virtualGamepads[0], virtualGamepads[1], null, null];
+
     navigator.getGamepads = function() {
-        const result = [null, null, null, null];
-        const real = nativeGetGamepads ? Array.from(nativeGetGamepads()) : [];
+        const now = performance.now();
+        virtualGamepads[0].timestamp = now;
+        virtualGamepads[1].timestamp = now;
 
-        // Controller 1 (Host): virtualGamepads[0] combined with real gamepad if connected
-        virtualGamepads[0].timestamp = performance.now();
-        if (real[0] && real[0].connected) {
-            mergePhysicalPad(virtualGamepads[0], real[0]);
+        // Only query native browser gamepad IPC if a physical gamepad is plugged in
+        if (hasPhysicalGamepad && nativeGetGamepads) {
+            const real = nativeGetGamepads();
+            if (real && real[0] && real[0].connected) mergePhysicalPad(virtualGamepads[0], real[0]);
+            if (real && real[1] && real[1].connected) mergePhysicalPad(virtualGamepads[1], real[1]);
+            staticGamepadList[2] = (real && real[2]) ? real[2] : null;
+            staticGamepadList[3] = (real && real[3]) ? real[3] : null;
         }
-        result[0] = virtualGamepads[0];
 
-        // Controller 2 (Guest / P2): virtualGamepads[1] combined with real pad 1 if connected
-        virtualGamepads[1].timestamp = performance.now();
-        if (real[1] && real[1].connected) {
-            mergePhysicalPad(virtualGamepads[1], real[1]);
-        }
-        result[1] = virtualGamepads[1];
-
-        // Controller 3 and 4
-        if (real[2]) result[2] = real[2];
-        if (real[3]) result[3] = real[3];
-
-        return result;
+        return staticGamepadList;
     };
 
     // Player 1 Local State
