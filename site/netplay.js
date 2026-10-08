@@ -269,11 +269,11 @@ window.Netplay = (function() {
                 if (key === 'ArrowDown' || key === 's' || key === 'S') guestInput.down = true;
                 if (key === 'ArrowLeft' || key === 'a' || key === 'A') guestInput.left = true;
                 if (key === 'ArrowRight' || key === 'd' || key === 'D') guestInput.right = true;
-                if (key === ' ' || key === 'x' || key === 'X') guestInput.a = true; // A (Accel)
-                if (key === 'z' || key === 'Z' || key === 'c' || key === 'C') guestInput.b = true; // B (Brake)
-                if (key === 'Shift' || key === 'q' || key === 'Q') guestInput.z = true; // Z (Item)
-                if (key === 'e' || key === 'E' || key === 'r' || key === 'R') guestInput.r = true; // R (Drift)
-                if (key === 'Enter') guestInput.start = true; // Start
+                if (key === ' ' || key === 'x' || key === 'X' || key === 'j' || key === 'J') guestInput.a = true;
+                if (key === 'z' || key === 'Z' || key === 'c' || key === 'C' || key === 'k' || key === 'K') guestInput.b = true;
+                if (key === 'Shift' || key === 'q' || key === 'Q' || key === 'u' || key === 'U') guestInput.z = true;
+                if (key === 'e' || key === 'E' || key === 'r' || key === 'R' || key === 'i' || key === 'I') guestInput.r = true;
+                if (key === 'Enter' || key === 'Escape') guestInput.start = true;
             });
 
             window.addEventListener('keyup', (e) => {
@@ -283,11 +283,11 @@ window.Netplay = (function() {
                 if (key === 'ArrowDown' || key === 's' || key === 'S') guestInput.down = false;
                 if (key === 'ArrowLeft' || key === 'a' || key === 'A') guestInput.left = false;
                 if (key === 'ArrowRight' || key === 'd' || key === 'D') guestInput.right = false;
-                if (key === ' ' || key === 'x' || key === 'X') guestInput.a = false;
-                if (key === 'z' || key === 'Z' || key === 'c' || key === 'C') guestInput.b = false;
-                if (key === 'Shift' || key === 'q' || key === 'Q') guestInput.z = false;
-                if (key === 'e' || key === 'E' || key === 'r' || key === 'R') guestInput.r = false;
-                if (key === 'Enter') guestInput.start = false;
+                if (key === ' ' || key === 'x' || key === 'X' || key === 'j' || key === 'J') guestInput.a = false;
+                if (key === 'z' || key === 'Z' || key === 'c' || key === 'C' || key === 'k' || key === 'K') guestInput.b = false;
+                if (key === 'Shift' || key === 'q' || key === 'Q' || key === 'u' || key === 'U') guestInput.z = false;
+                if (key === 'e' || key === 'E' || key === 'r' || key === 'R' || key === 'i' || key === 'I') guestInput.r = false;
+                if (key === 'Enter' || key === 'Escape') guestInput.start = false;
             });
         },
 
@@ -301,6 +301,10 @@ window.Netplay = (function() {
         setGuestStick: function(x, y) {
             guestInput.stickX = x;
             guestInput.stickY = y;
+            guestInput.left = x < -0.3;
+            guestInput.right = x > 0.3;
+            guestInput.up = y < -0.3;
+            guestInput.down = y > 0.3;
         }
     };
 })();

@@ -397,53 +397,230 @@
             color: #fff;
         }
 
-        /* MOBILE TOUCH CONTROLS */
+        /* MOBILE TOUCH CONTROLS & VIRTUAL JOYSTICK */
         .touch-overlay {
             position: absolute;
             inset: 0;
             pointer-events: none;
+            z-index: 30;
             display: none;
-            z-index: 20;
+            user-select: none;
+            -webkit-user-select: none;
         }
 
-        .touch-pad-left, .touch-pad-right {
+        .touch-overlay.active {
+            display: block;
+        }
+
+        /* Joystick Base & Knob (Left) */
+        .joystick-container {
             position: absolute;
-            bottom: 20px;
-            pointer-events: auto;
-        }
-
-        .touch-pad-left {
-            left: 20px;
+            bottom: 24px;
+            left: 24px;
             width: 140px;
             height: 140px;
+            pointer-events: auto;
+            touch-action: none;
         }
 
-        .touch-pad-right {
-            right: 20px;
-            display: grid;
-            grid-template-columns: repeat(2, 60px);
-            gap: 12px;
-        }
-
-        .touch-btn {
-            width: 60px;
-            height: 60px;
+        .joystick-base {
+            width: 100%;
+            height: 100%;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(4px);
-            border: 2px solid rgba(255, 255, 255, 0.4);
-            color: white;
-            font-weight: 800;
-            font-size: 16px;
+            background: radial-gradient(circle, rgba(25, 28, 42, 0.8) 0%, rgba(10, 12, 18, 0.95) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(255, 51, 68, 0.2);
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
-            user-select: none;
         }
 
-        .touch-btn:active {
-            background: rgba(255, 51, 68, 0.6);
-            border-color: #ff3344;
+        .joystick-base::after {
+            content: '🕹️';
+            font-size: 16px;
+            opacity: 0.3;
+            position: absolute;
+        }
+
+        .joystick-knob {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #ff5252, #c62828);
+            border: 2px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 18px rgba(255, 51, 68, 0.7), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+            position: absolute;
+            transform: translate(0px, 0px);
+            pointer-events: none;
+        }
+
+        /* Action Buttons Cluster (Right) */
+        .touch-buttons-cluster {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            display: grid;
+            grid-template-columns: repeat(2, 64px);
+            grid-template-rows: repeat(2, 64px);
+            gap: 14px;
+            pointer-events: auto;
+            touch-action: none;
+        }
+
+        .touch-btn {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            transition: transform 0.08s ease, filter 0.08s ease;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .touch-btn:active, .touch-btn.pressed {
+            transform: scale(0.9) !important;
+            filter: brightness(1.35);
+        }
+
+        .touch-btn span {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .touch-btn small {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+            margin-top: 2px;
+        }
+
+        .touch-btn-a {
+            background: radial-gradient(circle at 35% 35%, #00e676, #009624);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.75);
+            box-shadow: 0 4px 18px rgba(0, 230, 118, 0.5);
+        }
+
+        .touch-btn-b {
+            background: radial-gradient(circle at 35% 35%, #ff3344, #b71c1c);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.75);
+            box-shadow: 0 4px 18px rgba(255, 51, 68, 0.5);
+        }
+
+        .touch-btn-z {
+            background: radial-gradient(circle at 35% 35%, #ffbe1a, #f57f17);
+            color: #111;
+            border: 2px solid rgba(255, 255, 255, 0.75);
+            box-shadow: 0 4px 18px rgba(255, 190, 26, 0.5);
+        }
+
+        .touch-btn-r {
+            background: radial-gradient(circle at 35% 35%, #2979ff, #1565c0);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.75);
+            box-shadow: 0 4px 18px rgba(41, 121, 255, 0.5);
+        }
+
+        .touch-start-cluster {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            pointer-events: auto;
+            z-index: 35;
+        }
+
+        .touch-btn-start {
+            background: rgba(25, 28, 42, 0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 8px 22px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+
+        .touch-btn-start:active, .touch-btn-start.pressed {
+            transform: scale(0.92);
+            background: var(--accent-red);
+        }
+
+        /* Floating Audio Unmute Pill */
+        .unmute-pill {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 230, 118, 0.95);
+            color: #000;
+            padding: 10px 22px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 13px;
+            z-index: 45;
+            box-shadow: 0 6px 24px rgba(0, 230, 118, 0.6);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.04); }
+        }
+
+        @media (max-width: 768px) {
+            .stage-wrapper {
+                border-radius: 0;
+                border: none;
+                max-width: 100vw;
+                width: 100vw;
+                aspect-ratio: 4 / 3;
+            }
+            .joystick-container {
+                bottom: 10px;
+                left: 10px;
+                width: 120px;
+                height: 120px;
+            }
+            .joystick-knob {
+                width: 50px;
+                height: 50px;
+            }
+            .touch-buttons-cluster {
+                bottom: 10px;
+                right: 10px;
+                grid-template-columns: repeat(2, 54px);
+                grid-template-rows: repeat(2, 54px);
+                gap: 10px;
+            }
+            .touch-btn {
+                width: 54px;
+                height: 54px;
+            }
+            .touch-btn span {
+                font-size: 16px;
+            }
+            .touch-btn small {
+                font-size: 8px;
+            }
         }
 
         /* HIDDEN ELEMENTS FOR N64WASM INTEGRATION */
@@ -508,14 +685,43 @@
                 </div>
             </div>
 
-            <!-- Mobile Virtual Controls -->
+            <!-- Floating Unmute Audio Pill -->
+            <div class="unmute-pill" id="unmutePill" style="display: none;" onclick="unmuteAudioOnFirstTouch()">
+                🔊 Toca aquí para activar sonido
+            </div>
+
+            <!-- Mobile Virtual Controls & Analog Joystick -->
             <div class="touch-overlay" id="touchOverlay">
-                <div class="touch-pad-left" id="nippleTouchZone"></div>
-                <div class="touch-pad-right">
-                    <div class="touch-btn" id="tBtnZ">Z</div>
-                    <div class="touch-btn" id="tBtnR">R</div>
-                    <div class="touch-btn" id="tBtnB">B</div>
-                    <div class="touch-btn" id="tBtnA" style="background: rgba(0, 230, 118, 0.3);">A</div>
+                <!-- Virtual Joystick (Left) -->
+                <div class="joystick-container" id="joystickContainer">
+                    <div class="joystick-base" id="joystickBase">
+                        <div class="joystick-knob" id="joystickKnob"></div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons Cluster (Right) -->
+                <div class="touch-buttons-cluster" id="touchButtonsCluster">
+                    <div class="touch-btn touch-btn-z" id="tBtnZ" data-action="z">
+                        <span>Z</span>
+                        <small>Ítem</small>
+                    </div>
+                    <div class="touch-btn touch-btn-r" id="tBtnR" data-action="r">
+                        <span>R</span>
+                        <small>Derrape</small>
+                    </div>
+                    <div class="touch-btn touch-btn-b" id="tBtnB" data-action="b">
+                        <span>B</span>
+                        <small>Freno</small>
+                    </div>
+                    <div class="touch-btn touch-btn-a" id="tBtnA" data-action="a">
+                        <span>A</span>
+                        <small>Gas</small>
+                    </div>
+                </div>
+
+                <!-- Top Start Button for Mobile -->
+                <div class="touch-start-cluster" id="touchStartCluster">
+                    <button class="touch-btn-start" id="tBtnStart" data-action="start">START</button>
                 </div>
             </div>
         </div>
@@ -524,6 +730,9 @@
         <div class="toolbar" id="mainToolbar">
             <button class="btn btn-green" id="btnInvite" onclick="toggleInviteModal()">
                 🌐 Invitar Amigo (Crear Sala)
+            </button>
+            <button class="btn btn-secondary" id="btnToggleTouch" onclick="toggleTouchControls()">
+                📱 Joystick: ON/OFF
             </button>
             <button class="btn btn-secondary" id="btnLocalP2" onclick="toggleLocal2P()">
                 👥 Modo 2 Jugadores (Local)
@@ -562,35 +771,36 @@
         <!-- Controls Guide Modal -->
         <div class="card-modal" id="controlsModal" style="display: none;">
             <div class="card-modal-header">
-                <div class="card-modal-title">🎮 Mapeo de Controles</div>
+                <div class="card-modal-title">🎮 Mapeo de Controles Unificado</div>
                 <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="toggleControlsModal()">✕</button>
             </div>
             <div class="controls-grid">
                 <div class="control-item">
-                    <h4>Jugador 1 (Host)</h4>
-                    <div class="key-row"><span>Dirección</span><span class="key-cap">Flechas / W,A,S,D</span></div>
-                    <div class="key-row"><span>Acelerar (A)</span><span class="key-cap">X / Espacio</span></div>
-                    <div class="key-row"><span>Frenar / Reversa (B)</span><span class="key-cap">Z / C</span></div>
-                    <div class="key-row"><span>Usar Item (Z)</span><span class="key-cap">Shift Izq / Q</span></div>
-                    <div class="key-row"><span>Salto / Derrape (R)</span><span class="key-cap">E / D</span></div>
-                    <div class="key-row"><span>Pausa / Start</span><span class="key-cap">Enter</span></div>
+                    <h4>Teclado (Host y Amigo Online)</h4>
+                    <div class="key-row"><span>Dirección</span><span class="key-cap">Flechas / W, A, S, D</span></div>
+                    <div class="key-row"><span>Acelerar (A)</span><span class="key-cap">X / Espacio / J</span></div>
+                    <div class="key-row"><span>Frenar / Reversa (B)</span><span class="key-cap">Z / C / K</span></div>
+                    <div class="key-row"><span>Usar Ítem (Z)</span><span class="key-cap">Shift / Q / U</span></div>
+                    <div class="key-row"><span>Derrape / Salto (R)</span><span class="key-cap">E / R / I</span></div>
+                    <div class="key-row"><span>Pausa / Start</span><span class="key-cap">Enter / Escape</span></div>
                 </div>
                 <div class="control-item">
-                    <h4>Jugador 2 (Online / Local)</h4>
-                    <div class="key-row"><span>Dirección</span><span class="key-cap">Flechas o Pad</span></div>
-                    <div class="key-row"><span>Acelerar (A)</span><span class="key-cap">Espacio / Tecla 1</span></div>
-                    <div class="key-row"><span>Frenar / Reversa (B)</span><span class="key-cap">C / Tecla 3</span></div>
-                    <div class="key-row"><span>Usar Item (Z)</span><span class="key-cap">Shift / Tecla 0</span></div>
-                    <div class="key-row"><span>Salto / Derrape (R)</span><span class="key-cap">E / Tecla 5</span></div>
-                    <div class="key-row"><span>Pausa / Start</span><span class="key-cap">Enter / ]</span></div>
+                    <h4>📱 Celular / Pantalla Táctil</h4>
+                    <div class="key-row"><span>Dirección</span><span class="key-cap">Joystick Análogo (Izquierda)</span></div>
+                    <div class="key-row"><span>Acelerar (A)</span><span class="key-cap">Botón Verde [A]</span></div>
+                    <div class="key-row"><span>Frenar (B)</span><span class="key-cap">Botón Rojo [B]</span></div>
+                    <div class="key-row"><span>Usar Ítem (Z)</span><span class="key-cap">Botón Amarillo [Z]</span></div>
+                    <div class="key-row"><span>Derrape (R)</span><span class="key-cap">Botón Azul [R]</span></div>
+                    <div class="key-row"><span>Pausa / Start</span><span class="key-cap">Botón [START] (Arriba)</span></div>
                 </div>
                 <div class="control-item">
                     <h4>Mandos Físicos (USB / Bluetooth)</h4>
-                    <div class="key-row"><span>Acelerar</span><span class="key-cap">Botón A (Xbox) / ✕ (PS)</span></div>
-                    <div class="key-row"><span>Frenar / Reversa</span><span class="key-cap">Botón B / ⭘</span></div>
-                    <div class="key-row"><span>Item (Z)</span><span class="key-cap">Gatillo LB / LT</span></div>
+                    <div class="key-row"><span>Dirección</span><span class="key-cap">Palanca / Cruz D-Pad</span></div>
+                    <div class="key-row"><span>Acelerar (A)</span><span class="key-cap">Botón A (Xbox) / ✕ (PS)</span></div>
+                    <div class="key-row"><span>Frenar (B)</span><span class="key-cap">Botón B / ⭘</span></div>
+                    <div class="key-row"><span>Ítem (Z)</span><span class="key-cap">Gatillo LB / LT</span></div>
                     <div class="key-row"><span>Derrape (R)</span><span class="key-cap">Gatillo RB / RT</span></div>
-                    <div class="key-row"><span>Start</span><span class="key-cap">Start / Menu</span></div>
+                    <div class="key-row"><span>Start</span><span class="key-cap">Start / Options</span></div>
                 </div>
             </div>
         </div>
@@ -628,8 +838,18 @@
         let myApp = null;
         let isGuestMode = false;
         let roomCodeFromUrl = null;
+        let touchControlsActive = false;
 
         window.addEventListener('DOMContentLoaded', () => {
+            initVirtualJoystick();
+            initTouchButtons();
+            checkAutoEnableTouch();
+
+            // Auto-unmute on first click/touch anywhere
+            window.addEventListener('click', unmuteAudioOnFirstTouch, { once: true });
+            window.addEventListener('keydown', unmuteAudioOnFirstTouch, { once: true });
+            window.addEventListener('touchstart', unmuteAudioOnFirstTouch, { once: true });
+
             // Check for URL query params: ?join=CODE or ?room=CODE
             const urlParams = new URLSearchParams(window.location.search);
             roomCodeFromUrl = urlParams.get('join') || urlParams.get('room');
@@ -640,6 +860,153 @@
                 setupHostMode();
             }
         });
+
+        // ----------------------------------------
+        // TOUCH CONTROLS & VIRTUAL JOYSTICK
+        // ----------------------------------------
+        function toggleTouchControls() {
+            touchControlsActive = !touchControlsActive;
+            const overlay = document.getElementById('touchOverlay');
+            const btn = document.getElementById('btnToggleTouch');
+            if (touchControlsActive) {
+                overlay.classList.add('active');
+                if (btn) btn.style.background = 'linear-gradient(135deg, #00c853, #009624)';
+                toastr.success('Joystick en pantalla ACTIVADO');
+            } else {
+                overlay.classList.remove('active');
+                if (btn) btn.style.background = 'var(--bg-card)';
+                toastr.info('Joystick en pantalla desactivado');
+            }
+        }
+
+        function checkAutoEnableTouch() {
+            const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth <= 900;
+            if (isTouch) {
+                touchControlsActive = true;
+                const overlay = document.getElementById('touchOverlay');
+                if (overlay) overlay.classList.add('active');
+                const btn = document.getElementById('btnToggleTouch');
+                if (btn) btn.style.background = 'linear-gradient(135deg, #00c853, #009624)';
+            }
+        }
+
+        function unmuteAudioOnFirstTouch() {
+            const video = document.getElementById('guestVideo');
+            if (video) {
+                video.muted = false;
+            }
+            const pill = document.getElementById('unmutePill');
+            if (pill) pill.style.display = 'none';
+        }
+
+        function showUnmuteNotice() {
+            const pill = document.getElementById('unmutePill');
+            if (pill) pill.style.display = 'flex';
+        }
+
+        function initVirtualJoystick() {
+            const container = document.getElementById('joystickContainer');
+            const knob = document.getElementById('joystickKnob');
+            if (!container || !knob) return;
+
+            let activePointerId = null;
+            let centerX = 0;
+            let centerY = 0;
+            const maxRadius = 40; // max travel radius in px
+
+            function updateStick(xNorm, yNorm) {
+                if (isGuestMode) {
+                    Netplay.setGuestStick(xNorm, yNorm);
+                } else if (window.ControllerManager) {
+                    ControllerManager.setPlayer1Stick(xNorm, yNorm);
+                }
+            }
+
+            container.addEventListener('pointerdown', (e) => {
+                if (activePointerId !== null) return;
+                activePointerId = e.pointerId;
+                container.setPointerCapture(e.pointerId);
+                const rect = container.getBoundingClientRect();
+                centerX = rect.left + rect.width / 2;
+                centerY = rect.top + rect.height / 2;
+                handlePointerMove(e);
+                unmuteAudioOnFirstTouch();
+            });
+
+            function handlePointerMove(e) {
+                if (e.pointerId !== activePointerId) return;
+                const dx = e.clientX - centerX;
+                const dy = e.clientY - centerY;
+                const dist = Math.hypot(dx, dy);
+                const clampedDist = Math.min(dist, maxRadius);
+                const angle = Math.atan2(dy, dx);
+
+                const clampedX = Math.cos(angle) * clampedDist;
+                const clampedY = Math.sin(angle) * clampedDist;
+
+                knob.style.transform = `translate(${clampedX}px, ${clampedY}px)`;
+                knob.style.transition = 'none';
+
+                const xNorm = clampedX / maxRadius;
+                const yNorm = clampedY / maxRadius;
+                updateStick(xNorm, yNorm);
+            }
+
+            container.addEventListener('pointermove', handlePointerMove);
+
+            function handlePointerEnd(e) {
+                if (e.pointerId !== activePointerId) return;
+                activePointerId = null;
+                knob.style.transform = 'translate(0px, 0px)';
+                knob.style.transition = 'transform 0.15s ease-out';
+                updateStick(0, 0);
+            }
+
+            container.addEventListener('pointerup', handlePointerEnd);
+            container.addEventListener('pointercancel', handlePointerEnd);
+        }
+
+        function initTouchButtons() {
+            const buttons = document.querySelectorAll('.touch-btn, .touch-btn-start');
+            buttons.forEach(btn => {
+                const action = btn.getAttribute('data-action');
+                if (!action) return;
+
+                function setAction(isPressed) {
+                    if (isPressed) {
+                        btn.classList.add('pressed');
+                        if (navigator.vibrate) {
+                            try { navigator.vibrate(12); } catch(e) {}
+                        }
+                    } else {
+                        btn.classList.remove('pressed');
+                    }
+
+                    if (isGuestMode) {
+                        Netplay.setGuestTouch(action, isPressed);
+                    } else if (window.ControllerManager) {
+                        ControllerManager.setPlayer1Touch(action, isPressed);
+                    }
+                }
+
+                btn.addEventListener('pointerdown', (e) => {
+                    e.preventDefault();
+                    btn.setPointerCapture(e.pointerId);
+                    setAction(true);
+                    unmuteAudioOnFirstTouch();
+                });
+
+                btn.addEventListener('pointerup', (e) => {
+                    e.preventDefault();
+                    setAction(false);
+                });
+
+                btn.addEventListener('pointercancel', (e) => {
+                    e.preventDefault();
+                    setAction(false);
+                });
+            });
+        }
 
         // ----------------------------------------
         // HOST SETUP
@@ -669,7 +1036,7 @@
                 if (overlay) overlay.style.display = 'none';
                 document.getElementById('statusDot').style.background = 'var(--accent-green)';
                 document.getElementById('statusText').innerText = '🟢 Mario Kart 64 (60 FPS)';
-                toastr.success('¡Juego iniciado! Usa Flechas y X/Z para conducir.');
+                toastr.success('¡Juego iniciado! Conduce con las Flechas y X/Z.');
             }, 350);
         };
 
@@ -789,22 +1156,27 @@
             const guestVideo = document.getElementById('guestVideo');
             guestVideo.style.display = 'block';
 
-            document.getElementById('overlayTitle').innerText = 'Unirse a Mario Kart 64';
+            document.getElementById('overlayTitle').innerText = 'Mario Kart 64 Online';
             document.getElementById('overlayDesc').innerHTML = 'Conectando con la sala <b>' + code.toUpperCase() + '</b> del Anfitrión...';
             document.getElementById('btnStartGame').style.display = 'none';
-            document.getElementById('btnCreateRoomDirect').innerText = '🏁 Conectar como Jugador 2';
-            document.getElementById('btnCreateRoomDirect').onclick = () => connectGuest(code);
+            document.getElementById('btnCreateRoomDirect').style.display = 'none';
             document.getElementById('btnInvite').style.display = 'none';
             document.getElementById('btnLocalP2').style.display = 'none';
 
+            // Show connecting status on progress bar
+            const container = document.getElementById('loadingProgressContainer');
+            if (container) container.style.display = 'block';
+            document.getElementById('loadingStatusLabel').innerText = 'Estableciendo canal WebRTC P2P...';
+            document.getElementById('loadingPercentLabel').innerText = code.toUpperCase();
+            document.getElementById('loadingProgressBar').style.width = '60%';
+
             document.getElementById('statusText').innerText = 'Modo Invitado (P2)';
 
-            // Auto-connect on click
+            // Auto-connect on page load
             connectGuest(code);
         }
 
         function connectGuest(code) {
-            document.getElementById('startOverlay').style.display = 'none';
             document.getElementById('statusText').innerText = 'Conectando WebRTC...';
 
             Netplay.joinRoom(
@@ -813,22 +1185,51 @@
                 () => {
                     document.getElementById('statusDot').style.background = 'var(--accent-green)';
                     document.getElementById('statusText').innerText = '🟢 Conectado al Host (P2)';
-                    toastr.success('¡Conectado! Esperando transmisión de video...');
+                    document.getElementById('loadingStatusLabel').innerText = '🟢 Conectado con Anfitrión. Recibiendo video 60 FPS...';
+                    document.getElementById('loadingProgressBar').style.width = '85%';
+                    toastr.success('¡Conectado! Recibiendo transmisión...');
                 },
                 // onStreamReady
                 (stream) => {
                     const video = document.getElementById('guestVideo');
                     video.srcObject = stream;
-                    video.play().catch(e => {
-                        console.warn("Autoplay needs click:", e);
-                        toastr.info('Haz clic en la pantalla para activar el audio');
-                    });
+                    video.muted = true; // MUST start muted for instant autoplay on mobile/desktop without blocking
+                    video.playsInline = true;
+                    video.setAttribute('playsinline', '');
+                    video.setAttribute('webkit-playsinline', '');
+
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            console.log("Guest video playing smoothly 60 FPS");
+                            // Try to unmute if already interacted
+                            video.muted = false;
+                        }).catch(e => {
+                            console.warn("Muted autoplay fallback active:", e);
+                            video.muted = true;
+                            video.play();
+                            showUnmuteNotice();
+                        });
+                    }
+
+                    // Once video has real frames, hide overlay
+                    video.onplaying = () => {
+                        const overlay = document.getElementById('startOverlay');
+                        if (overlay) overlay.style.display = 'none';
+                    };
+                    setTimeout(() => {
+                        const overlay = document.getElementById('startOverlay');
+                        if (overlay) overlay.style.display = 'none';
+                    }, 500);
+
                     toastr.success('¡Transmisión 60 FPS activa!');
                 },
                 // onDisconnected
                 () => {
                     document.getElementById('statusDot').style.background = 'var(--accent-red)';
                     document.getElementById('statusText').innerText = '⚠️ Desconectado del Host';
+                    document.getElementById('startOverlay').style.display = 'flex';
+                    document.getElementById('loadingStatusLabel').innerText = '⚠️ Se perdió la conexión con la sala ' + code;
                     toastr.error('Se perdió la conexión con el anfitrión');
                 },
                 // onPingUpdate
@@ -848,7 +1249,7 @@
             if (window.ControllerManager.local2PlayerEnabled) {
                 btn.style.background = 'linear-gradient(135deg, #2979ff, #1565c0)';
                 btn.innerText = '👥 2P Local ACTIVO (Teclado)';
-                toastr.success('Modo 2P Local Activo. Usa Flechas + Numpad 1/2/0/3 para Jugador 2.');
+                toastr.success('Modo 2P Local Activo. P1: WASD+Espacio/Z, P2: Flechas+I/O/U/P.');
             } else {
                 btn.style.background = 'var(--bg-card)';
                 btn.innerText = '👥 Modo 2 Jugadores (Local)';

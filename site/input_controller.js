@@ -332,12 +332,12 @@ class InputController {
 
     defaultKeymappings() {
         return {
-            Mapping_Left: 'b',
-            Mapping_Right: 'n',
-            Mapping_Up: 'y',
-            Mapping_Down: 'h',
-            Mapping_Action_A: 'd',
-            Mapping_Action_B: 's',
+            Mapping_Left: 'ArrowLeft',
+            Mapping_Right: 'ArrowRight',
+            Mapping_Up: 'ArrowUp',
+            Mapping_Down: 'ArrowDown',
+            Mapping_Action_A: 'x',
+            Mapping_Action_B: 'z',
             Mapping_Action_Start: 'Enter',
             Mapping_Action_CUP: 'i',
             Mapping_Action_CDOWN: 'k',
@@ -347,7 +347,7 @@ class InputController {
             Mapping_Action_Analog_Down: 'ArrowDown',
             Mapping_Action_Analog_Left: 'ArrowLeft',
             Mapping_Action_Analog_Right: 'ArrowRight',
-            Mapping_Action_Z: 'a',
+            Mapping_Action_Z: 'Shift',
             Mapping_Action_L: 'q',
             Mapping_Action_R: 'e',
             Mapping_Menu: '`',
@@ -487,53 +487,54 @@ class InputController {
         let arrowkey = false;
 
         //player 1
-        if (event.key == input_controller.KeyMappings.Mapping_Down) {
+        const k = event.key;
+        if (k == input_controller.KeyMappings.Mapping_Down || k === 'ArrowDown' || k === 's' || k === 'S') {
             input_controller.Key_Down = true;
             arrowkey = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Up) {
+        if (k == input_controller.KeyMappings.Mapping_Up || k === 'ArrowUp' || k === 'w' || k === 'W') {
             input_controller.Key_Up = true;
             arrowkey = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Left) {
+        if (k == input_controller.KeyMappings.Mapping_Left || k === 'ArrowLeft' || k === 'a' || k === 'A') {
             input_controller.Key_Left = true;
             arrowkey = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Right) {
+        if (k == input_controller.KeyMappings.Mapping_Right || k === 'ArrowRight' || k === 'd' || k === 'D') {
             input_controller.Key_Right = true;
             arrowkey = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_Start) {
+        if (k == input_controller.KeyMappings.Mapping_Action_Start || k === 'Enter' || k === 'Escape') {
             input_controller.Key_Action_Start = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_CUP) {
+        if (k == input_controller.KeyMappings.Mapping_Action_CUP) {
             input_controller.Key_Action_CUP = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_CDOWN) {
+        if (k == input_controller.KeyMappings.Mapping_Action_CDOWN) {
             input_controller.Key_Action_CDOWN = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_CLEFT) {
+        if (k == input_controller.KeyMappings.Mapping_Action_CLEFT) {
             input_controller.Key_Action_CLEFT = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_CRIGHT) {
+        if (k == input_controller.KeyMappings.Mapping_Action_CRIGHT) {
             input_controller.Key_Action_CRIGHT = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_B) {
+        if (k == input_controller.KeyMappings.Mapping_Action_B || k === 'z' || k === 'Z' || k === 'c' || k === 'C' || k === 'k' || k === 'K') {
             input_controller.Key_Action_B = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_Z) {
+        if (k == input_controller.KeyMappings.Mapping_Action_Z || k === 'Shift' || k === 'q' || k === 'Q' || k === 'u' || k === 'U') {
             input_controller.Key_Action_Z = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_L) {
+        if (k == input_controller.KeyMappings.Mapping_Action_L) {
             input_controller.Key_Action_L = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_R) {
+        if (k == input_controller.KeyMappings.Mapping_Action_R || k === 'e' || k === 'E' || k === 'r' || k === 'R' || k === 'i' || k === 'I') {
             input_controller.Key_Action_R = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_A) {
+        if (k == input_controller.KeyMappings.Mapping_Action_A || k === 'x' || k === 'X' || k === ' ' || k === 'j' || k === 'J') {
             input_controller.Key_Action_A = true;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Menu) {
+        if (k == input_controller.KeyMappings.Mapping_Menu) {
             input_controller.Key_Menu = true;
         }
         
@@ -553,49 +554,50 @@ class InputController {
             event = new KeyboardEvent('', { key: 'ArrowDown' });
         
         //player 1
-        if (event.key == input_controller.KeyMappings.Mapping_Down) {
+        const k = event.key;
+        if (k == input_controller.KeyMappings.Mapping_Down || k === 'ArrowDown' || k === 's' || k === 'S') {
             input_controller.Key_Down = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Up) {
+        if (k == input_controller.KeyMappings.Mapping_Up || k === 'ArrowUp' || k === 'w' || k === 'W') {
             input_controller.Key_Up = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Left) {
+        if (k == input_controller.KeyMappings.Mapping_Left || k === 'ArrowLeft' || k === 'a' || k === 'A') {
             input_controller.Key_Left = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Right) {
+        if (k == input_controller.KeyMappings.Mapping_Right || k === 'ArrowRight' || k === 'd' || k === 'D') {
             input_controller.Key_Right = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_Start) {
+        if (k == input_controller.KeyMappings.Mapping_Action_Start || k === 'Enter' || k === 'Escape') {
             input_controller.Key_Action_Start = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_CUP) {
+        if (k == input_controller.KeyMappings.Mapping_Action_CUP) {
             input_controller.Key_Action_CUP = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_CDOWN) {
+        if (k == input_controller.KeyMappings.Mapping_Action_CDOWN) {
             input_controller.Key_Action_CDOWN = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_CLEFT) {
+        if (k == input_controller.KeyMappings.Mapping_Action_CLEFT) {
             input_controller.Key_Action_CLEFT = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_CRIGHT) {
+        if (k == input_controller.KeyMappings.Mapping_Action_CRIGHT) {
             input_controller.Key_Action_CRIGHT = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_B) {
+        if (k == input_controller.KeyMappings.Mapping_Action_B || k === 'z' || k === 'Z' || k === 'c' || k === 'C' || k === 'k' || k === 'K') {
             input_controller.Key_Action_B = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_Z) {
+        if (k == input_controller.KeyMappings.Mapping_Action_Z || k === 'Shift' || k === 'q' || k === 'Q' || k === 'u' || k === 'U') {
             input_controller.Key_Action_Z = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_L) {
+        if (k == input_controller.KeyMappings.Mapping_Action_L) {
             input_controller.Key_Action_L = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_R) {
+        if (k == input_controller.KeyMappings.Mapping_Action_R || k === 'e' || k === 'E' || k === 'r' || k === 'R' || k === 'i' || k === 'I') {
             input_controller.Key_Action_R = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Action_A) {
+        if (k == input_controller.KeyMappings.Mapping_Action_A || k === 'x' || k === 'X' || k === ' ' || k === 'j' || k === 'J') {
             input_controller.Key_Action_A = false;
         }
-        if (event.key == input_controller.KeyMappings.Mapping_Menu) {
+        if (k == input_controller.KeyMappings.Mapping_Menu) {
             input_controller.Key_Menu = false;
         }
         
