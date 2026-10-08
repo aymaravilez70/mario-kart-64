@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mario Kart 64 Web - Multijugador Online</title>
+    <meta name="description" content="Juega Mario Kart 64 directamente desde tu navegador en 60 FPS con multijugador online P2P sin descargas.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>">
+    
+    <!-- Vendor Styles & Scripts -->
+    <link rel="stylesheet" href="vendor/toastr.min.css">
+    <script src="vendor/jquery.min.js"></script>
+    <script src="vendor/rivets.bundled.min.js"></script>
+    <script src="vendor/toastr.min.js"></script>
+    <script src="vendor/nipplejs.min.js"></script>
+    <script src="peerjs.min.js"></script>
+
+    <style>
+        :root {
+            --bg-main: #0c0d12;
+            --bg-card: #151720;
+            --bg-card-hover: #1c1e2b;
+            --border: #26293b;
+            --accent-red: #ff3344;
+            --accent-red-glow: rgba(255, 51, 68, 0.4);
+            --accent-gold: #ffbe1a;
+            --accent-green: #00e676;
+            --accent-blue: #2979ff;
+            --text-main: #ffffff;
+            --text-muted: #8e95ab;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(255, 51, 68, 0.15), transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(41, 121, 255, 0.08), transparent 40%);
+        }
+
+        /* HEADER */
+        header {
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+            background: rgba(12, 13, 18, 0.85);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .brand-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-badge {
+            background: linear-gradient(135deg, #ff3344, #ff8800);
+            color: white;
+            font-weight: 900;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 10px var(--accent-red-glow);
+        }
+
+        .brand-title {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .brand-title span {
+            color: var(--accent-gold);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+        }
+
+        .dot-pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+
+        /* MAIN CONTAINER */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 16px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* GAME AREA */
+        .stage-wrapper {
+            position: relative;
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 2px solid var(--border);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 4 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .stage-wrapper.fullscreen {
+            max-width: 100vw;
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+            border: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+        }
+
+        #canvas, #guestVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* OVERLAYS & INTRO POSTER */
+        .start-overlay {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(20, 22, 34, 0.95), rgba(12, 13, 18, 0.98));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .poster-icon {
+            font-size: 64px;
+            margin-bottom: 12px;
+            filter: drop-shadow(0 6px 16px rgba(255, 51, 68, 0.5));
+            animation: bounce 2s infinite ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .poster-title {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .poster-desc {
+            color: var(--text-muted);
+            font-size: 14px;
+            max-width: 440px;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        /* BUTTONS */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-red), #d61828);
+            color: white;
+            box-shadow: 0 4px 18px var(--accent-red-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(255, 51, 68, 0.6);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: white;
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: #3b3f5c;
+            transform: translateY(-1px);
+        }
+
+        .btn-green {
+            background: linear-gradient(135deg, #00c853, #009624);
+            color: white;
+            box-shadow: 0 4px 16px rgba(0, 230, 118, 0.3);
+        }
+
+        .btn-green:hover {
+            box-shadow: 0 6px 20px rgba(0, 230, 118, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* TOOLBAR */
+        .toolbar {
+            margin-top: 18px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        /* ROOM PANEL / MODAL */
+        .card-modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin-top: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+
+        .card-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .card-modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .invite-box {
+            background: #090a0e;
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .room-code-tag {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            color: var(--accent-gold);
+            font-family: monospace;
+            text-align: center;
+            padding: 6px;
+            background: rgba(255, 190, 26, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 190, 26, 0.3);
+        }
+
+        .share-input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .share-input {
+            flex: 1;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: #fff;
+            padding: 10px 14px;
+            font-size: 13px;
+            outline: none;
+        }
+
+        /* CONTROLS GUIDE */
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-top: 12px;
+        }
+
+        .control-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .control-item h4 {
+            font-size: 13px;
+            color: var(--accent-gold);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .key-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .key-row:last-child {
+            border-bottom: none;
+        }
+
+        .key-cap {
+            background: #232738;
+            border: 1px solid #363c54;
+            box-shadow: 0 2px 0 #181b28;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-family: monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        /* MOBILE TOUCH CONTROLS */
+        .touch-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: none;
+            z-index: 20;
+        }
+
+        .touch-pad-left, .touch-pad-right {
+            position: absolute;
+            bottom: 20px;
+            pointer-events: auto;
+        }
+
+        .touch-pad-left {
+            left: 20px;
+            width: 140px;
+            height: 140px;
+        }
+
+        .touch-pad-right {
+            right: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, 60px);
+            gap: 12px;
+        }
+
+        .touch-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            font-weight: 800;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        .touch-btn:active {
+            background: rgba(255, 51, 68, 0.6);
+            border-color: #ff3344;
+        }
+
+        /* HIDDEN ELEMENTS FOR N64WASM INTEGRATION */
+        .hidden-compat {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Navigation -->
+    <header>
+        <div class="brand-container">
+            <span class="brand-badge">WEB PORT</span>
+            <div class="brand-title">MARIO KART <span>64</span></div>
+        </div>
+        <div class="header-actions">
+            <div id="statusBadge" class="badge-status">
+                <div id="statusDot" class="dot-pulse"></div>
+                <span id="statusText">Cargando Motor...</span>
+            </div>
+            <button id="btnFullscreen" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="toggleFullscreen()">
+                📺 Pantalla Completa
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Canvas / Game Stage -->
+        <div class="stage-wrapper" id="stageWrapper">
+            <!-- Host Canvas (Player 1) -->
+            <div id="canvasDiv" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                <canvas id="canvas"></canvas>
+            </div>
+
+            <!-- Guest Stream (Player 2 over WebRTC) -->
+            <video id="guestVideo" autoplay playsinline style="display: none;"></video>
+
+            <!-- Intro / Start Overlay -->
+            <div class="start-overlay" id="startOverlay">
+                <div class="poster-icon">🏎️💨</div>
+                <h2 class="poster-title" id="overlayTitle">Mario Kart 64 Web</h2>
+                <p class="poster-desc" id="overlayDesc">
+                    Emulación WebAssembly a 60 FPS con aceleración WebGL2 nativa y Netplay P2P sin descargas para multijugador a distancia.
+                </p>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                    <button class="btn btn-primary" id="btnStartGame" onclick="startHostGame()">
+                        ▶ Iniciar Carrera (Host)
+                    </button>
+                    <button class="btn btn-green" id="btnCreateRoomDirect" onclick="startHostAndRoom()">
+                        🌐 Iniciar y Crear Sala Online
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Virtual Controls -->
+            <div class="touch-overlay" id="touchOverlay">
+                <div class="touch-pad-left" id="nippleTouchZone"></div>
+                <div class="touch-pad-right">
+                    <div class="touch-btn" id="tBtnZ">Z</div>
+                    <div class="touch-btn" id="tBtnR">R</div>
+                    <div class="touch-btn" id="tBtnB">B</div>
+                    <div class="touch-btn" id="tBtnA" style="background: rgba(0, 230, 118, 0.3);">A</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Toolbar -->
+        <div class="toolbar" id="mainToolbar">
+            <button class="btn btn-green" id="btnInvite" onclick="toggleInviteModal()">
+                🌐 Invitar Amigo (Crear Sala)
+            </button>
+            <button class="btn btn-secondary" id="btnLocalP2" onclick="toggleLocal2P()">
+                👥 Modo 2 Jugadores (Local)
+            </button>
+            <button class="btn btn-secondary" onclick="toggleControlsModal()">
+                🎮 Guía de Controles
+            </button>
+            <button class="btn btn-secondary" onclick="resetGame()">
+                🔄 Reiniciar
+            </button>
+        </div>
+
+        <!-- Multiplayer Invite Box -->
+        <div class="card-modal" id="inviteModal" style="display: none;">
+            <div class="card-modal-header">
+                <div class="card-modal-title">
+                    🌐 Sala Multijugador Online (Jugador 2)
+                </div>
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="toggleInviteModal()">✕ Cerrar</button>
+            </div>
+            <div class="invite-box">
+                <div style="font-size: 13px; color: var(--text-muted);">
+                    Comparte este código o enlace con tu amigo. Tu amigo entrará directamente al juego en su navegador <b>sin descargar nada</b>:
+                </div>
+                <div class="room-code-tag" id="roomCodeDisplay">GENERANDO...</div>
+                <div class="share-input-group">
+                    <input type="text" id="shareUrlInput" class="share-input" readonly value="">
+                    <button class="btn btn-primary" onclick="copyShareUrl()">📋 Copiar Enlace</button>
+                </div>
+                <div style="font-size: 12px; color: #a4b3d6;">
+                    💡 En la pantalla del juego, entra en <b>"2 PLAYER GAME"</b> para jugar Grand Prix, Versus o Modo Batalla en pantalla dividida.
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls Guide Modal -->
+        <div class="card-modal" id="controlsModal" style="display: none;">
+            <div class="card-modal-header">
+                <div class="card-modal-title">🎮 Mapeo de Controles</div>
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="toggleControlsModal()">✕</button>
+            </div>
+            <div class="controls-grid">
+                <div class="control-item">
+                    <h4>Jugador 1 (Host)</h4>
+                    <div class="key-row"><span>Dirección</span><span class="key-cap">Flechas / W,A,S,D</span></div>
+                    <div class="key-row"><span>Acelerar (A)</span><span class="key-cap">X / Espacio</span></div>
+                    <div class="key-row"><span>Frenar / Reversa (B)</span><span class="key-cap">Z / C</span></div>
+                    <div class="key-row"><span>Usar Item (Z)</span><span class="key-cap">Shift Izq / Q</span></div>
+                    <div class="key-row"><span>Salto / Derrape (R)</span><span class="key-cap">E / D</span></div>
+                    <div class="key-row"><span>Pausa / Start</span><span class="key-cap">Enter</span></div>
+                </div>
+                <div class="control-item">
+                    <h4>Jugador 2 (Online / Local)</h4>
+                    <div class="key-row"><span>Dirección</span><span class="key-cap">Flechas o Pad</span></div>
+                    <div class="key-row"><span>Acelerar (A)</span><span class="key-cap">Espacio / Tecla 1</span></div>
+                    <div class="key-row"><span>Frenar / Reversa (B)</span><span class="key-cap">C / Tecla 3</span></div>
+                    <div class="key-row"><span>Usar Item (Z)</span><span class="key-cap">Shift / Tecla 0</span></div>
+                    <div class="key-row"><span>Salto / Derrape (R)</span><span class="key-cap">E / Tecla 5</span></div>
+                    <div class="key-row"><span>Pausa / Start</span><span class="key-cap">Enter / ]</span></div>
+                </div>
+                <div class="control-item">
+                    <h4>Mandos Físicos (USB / Bluetooth)</h4>
+                    <div class="key-row"><span>Acelerar</span><span class="key-cap">Botón A (Xbox) / ✕ (PS)</span></div>
+                    <div class="key-row"><span>Frenar / Reversa</span><span class="key-cap">Botón B / ⭘</span></div>
+                    <div class="key-row"><span>Item (Z)</span><span class="key-cap">Gatillo LB / LT</span></div>
+                    <div class="key-row"><span>Derrape (R)</span><span class="key-cap">Gatillo RB / RT</span></div>
+                    <div class="key-row"><span>Start</span><span class="key-cap">Start / Menu</span></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Hidden compatibility elements required by n64wasm runtime -->
+    <div class="hidden-compat">
+        <div id="topPanel"></div>
+        <div id="bottomPanel"></div>
+        <div id="loginModal"></div>
+        <div id="buttonsModal"></div>
+        <div id="lblError"></div>
+        <div id="lblErrorOuter"></div>
+        <div id="mobileBottomPanel"></div>
+        <div id="mobileButtons"></div>
+        <div id="dropArea"></div>
+        <input id="file-upload" type="file">
+        <input id="file-upload-eep" type="file">
+        <input id="file-upload-sra" type="file">
+        <input id="file-upload-fla" type="file">
+        <select id="romselect">
+            <option value="mk64.v64">Mario Kart 64 (USA)</option>
+        </select>
+        <select id="savestateSelect"></select>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="settings.js"></script>
+    <script src="romlist.js"></script>
+    <script src="controller_manager.js"></script>
+    <script src="netplay.js"></script>
+    <script src="script.js"></script>
+
+    <script>
+        let myApp = null;
+        let isGuestMode = false;
+        let roomCodeFromUrl = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Check for URL query params: ?join=CODE or ?room=CODE
+            const urlParams = new URLSearchParams(window.location.search);
+            roomCodeFromUrl = urlParams.get('join') || urlParams.get('room');
+
+            if (roomCodeFromUrl) {
+                setupGuestMode(roomCodeFromUrl);
+            } else {
+                setupHostMode();
+            }
+        });
+
+        // ----------------------------------------
+        // HOST SETUP
+        // ----------------------------------------
+        function setupHostMode() {
+            try {
+                myApp = window.myApp || new MyClass();
+                window.myApp = myApp;
+
+                // Monitor WASM module readiness
+                const checkInterval = setInterval(() => {
+                    if (myApp && myApp.rivetsData && !myApp.rivetsData.moduleInitializing) {
+                        clearInterval(checkInterval);
+                        document.getElementById('statusDot').style.background = 'var(--accent-green)';
+                        document.getElementById('statusText').innerText = 'Motor Listo (60 FPS)';
+                    }
+                }, 200);
+            } catch (err) {
+                console.error("Initialization error:", err);
+            }
+        }
+
+        function startHostGame() {
+            document.getElementById('startOverlay').style.display = 'none';
+            document.getElementById('statusText').innerText = 'Ejecutando Mario Kart 64...';
+
+            if (myApp) {
+                myApp.loadRom();
+            }
+        }
+
+        function startHostAndRoom() {
+            startHostGame();
+            setTimeout(() => {
+                toggleInviteModal();
+            }, 600);
+        }
+
+        function toggleInviteModal() {
+            const modal = document.getElementById('inviteModal');
+            if (modal.style.display === 'none') {
+                modal.style.display = 'block';
+
+                if (!Netplay.getRoomCode()) {
+                    document.getElementById('roomCodeDisplay').innerText = 'CONECTANDO...';
+                    Netplay.createRoom(
+                        // onReady
+                        (code) => {
+                            document.getElementById('roomCodeDisplay').innerText = code;
+                            const shareUrl = window.location.origin + window.location.pathname + '?join=' + code;
+                            document.getElementById('shareUrlInput').value = shareUrl;
+                            toastr.success('Sala creada: ' + code);
+                        },
+                        // onGuestJoin
+                        (guestPeer) => {
+                            document.getElementById('statusDot').style.background = 'var(--accent-blue)';
+                            document.getElementById('statusText').innerText = '🟢 Jugador 2 Conectado';
+                            toastr.info('¡Tu amigo se ha unido a la carrera como Jugador 2!');
+                        },
+                        // onGuestLeave
+                        () => {
+                            document.getElementById('statusText').innerText = 'Jugador 2 Desconectado';
+                            toastr.warning('El Jugador 2 se ha desconectado');
+                        }
+                    );
+                }
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+
+        function copyShareUrl() {
+            const input = document.getElementById('shareUrlInput');
+            input.select();
+            document.execCommand('copy');
+            toastr.success('¡Enlace copiado al portapapeles!');
+        }
+
+        // ----------------------------------------
+        // GUEST SETUP
+        // ----------------------------------------
+        function setupGuestMode(code) {
+            isGuestMode = true;
+            document.getElementById('canvas').style.display = 'none';
+            const guestVideo = document.getElementById('guestVideo');
+            guestVideo.style.display = 'block';
+
+            document.getElementById('overlayTitle').innerText = 'Unirse a Mario Kart 64';
+            document.getElementById('overlayDesc').innerHTML = 'Conectando con la sala <b>' + code.toUpperCase() + '</b> del Anfitrión...';
+            document.getElementById('btnStartGame').style.display = 'none';
+            document.getElementById('btnCreateRoomDirect').innerText = '🏁 Conectar como Jugador 2';
+            document.getElementById('btnCreateRoomDirect').onclick = () => connectGuest(code);
+            document.getElementById('btnInvite').style.display = 'none';
+            document.getElementById('btnLocalP2').style.display = 'none';
+
+            document.getElementById('statusText').innerText = 'Modo Invitado (P2)';
+
+            // Auto-connect on click
+            connectGuest(code);
+        }
+
+        function connectGuest(code) {
+            document.getElementById('startOverlay').style.display = 'none';
+            document.getElementById('statusText').innerText = 'Conectando WebRTC...';
+
+            Netplay.joinRoom(
+                code,
+                // onConnected
+                () => {
+                    document.getElementById('statusDot').style.background = 'var(--accent-green)';
+                    document.getElementById('statusText').innerText = '🟢 Conectado al Host (P2)';
+                    toastr.success('¡Conectado! Esperando transmisión de video...');
+                },
+                // onStreamReady
+                (stream) => {
+                    const video = document.getElementById('guestVideo');
+                    video.srcObject = stream;
+                    video.play().catch(e => {
+                        console.warn("Autoplay needs click:", e);
+                        toastr.info('Haz clic en la pantalla para activar el audio');
+                    });
+                    toastr.success('¡Transmisión 60 FPS activa!');
+                },
+                // onDisconnected
+                () => {
+                    document.getElementById('statusDot').style.background = 'var(--accent-red)';
+                    document.getElementById('statusText').innerText = '⚠️ Desconectado del Host';
+                    toastr.error('Se perdió la conexión con el anfitrión');
+                },
+                // onPingUpdate
+                (rtt) => {
+                    document.getElementById('statusText').innerText = '🟢 P2 Online (' + rtt + 'ms)';
+                }
+            );
+        }
+
+        // ----------------------------------------
+        // HELPERS
+        // ----------------------------------------
+        function toggleLocal2P() {
+            if (!window.ControllerManager) return;
+            window.ControllerManager.local2PlayerEnabled = !window.ControllerManager.local2PlayerEnabled;
+            const btn = document.getElementById('btnLocalP2');
+            if (window.ControllerManager.local2PlayerEnabled) {
+                btn.style.background = 'linear-gradient(135deg, #2979ff, #1565c0)';
+                btn.innerText = '👥 2P Local ACTIVO (Teclado)';
+                toastr.success('Modo 2P Local Activo. Usa Flechas + Numpad 1/2/0/3 para Jugador 2.');
+            } else {
+                btn.style.background = 'var(--bg-card)';
+                btn.innerText = '👥 Modo 2 Jugadores (Local)';
+                toastr.info('Modo 2P Local desactivado');
+            }
+        }
+
+        function toggleControlsModal() {
+            const m = document.getElementById('controlsModal');
+            m.style.display = m.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function toggleFullscreen() {
+            const wrapper = document.getElementById('stageWrapper');
+            if (!document.fullscreenElement) {
+                if (wrapper.requestFullscreen) {
+                    wrapper.requestFullscreen();
+                } else if (wrapper.webkitRequestFullscreen) {
+                    wrapper.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        function resetGame() {
+            if (myApp && Module._neil_reset) {
+                Module._neil_reset();
+                toastr.info('Juego reiniciado');
+            } else {
+                window.location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

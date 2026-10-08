@@ -1,0 +1,14 @@
+# Dependencies & Vendor sources
+vendor/
+.tools/
+
+# Temporary test profiles and scripts
+.chrome*
+test_*.py
+check_*.py
+*.png
+
+# OS & Logs
+.DS_Store
+Thumbs.db
+*.log
