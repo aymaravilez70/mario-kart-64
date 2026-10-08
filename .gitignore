@@ -1,5 +1,6 @@
 # Dependencies & Vendor sources
-vendor/
+/vendor/
+!site/vendor/
 .tools/
 
 # Temporary test profiles and scripts

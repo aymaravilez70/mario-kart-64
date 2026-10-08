@@ -7,13 +7,19 @@
     <meta name="description" content="Juega Mario Kart 64 directamente desde tu navegador en 60 FPS con multijugador online P2P sin descargas.">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏎️</text></svg>">
     
-    <!-- Vendor Styles & Scripts -->
+    <!-- Vendor Styles & Scripts with CDN Fallbacks -->
     <link rel="stylesheet" href="vendor/toastr.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
     <script src="vendor/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="https://code.jquery.com/jquery-3.7.1.min.js"><\/script>')</script>
     <script src="vendor/rivets.bundled.min.js"></script>
+    <script>window.rivets || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/rivets/0.9.6/rivets.bundled.min.js"><\/script>')</script>
     <script src="vendor/toastr.min.js"></script>
+    <script>window.toastr || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"><\/script>')</script>
     <script src="vendor/nipplejs.min.js"></script>
+    <script>window.nipplejs || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.2/nipplejs.min.js"><\/script>')</script>
     <script src="peerjs.min.js"></script>
+    <script>window.Peer || document.write('<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"><\/script>')</script>
 
     <style>
         :root {
@@ -483,7 +489,16 @@
                 <p class="poster-desc" id="overlayDesc">
                     Emulación WebAssembly a 60 FPS con aceleración WebGL2 nativa y Netplay P2P sin descargas para multijugador a distancia.
                 </p>
-                <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                <div id="loadingProgressContainer" style="display: none; width: 100%; max-width: 400px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 8px;">
+                        <span id="loadingStatusLabel">Cargando Mario Kart 64...</span>
+                        <span id="loadingPercentLabel" style="font-weight: 700; color: var(--accent-gold);">0%</span>
+                    </div>
+                    <div style="width: 100%; height: 10px; background: rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; border: 1px solid var(--border);">
+                        <div id="loadingProgressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #ff3344, #ffbe1a); transition: width 0.2s ease;"></div>
+                    </div>
+                </div>
+                <div id="startButtonsContainer" style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
                     <button class="btn btn-primary" id="btnStartGame" onclick="startHostGame()">
                         ▶ Iniciar Carrera (Host)
                     </button>
@@ -629,6 +644,52 @@
         // ----------------------------------------
         // HOST SETUP
         // ----------------------------------------
+        window.onRomLoadProgress = function(percent) {
+            const container = document.getElementById('loadingProgressContainer');
+            if (container) container.style.display = 'block';
+            const buttons = document.getElementById('startButtonsContainer');
+            if (buttons) buttons.style.display = 'none';
+            const bar = document.getElementById('loadingProgressBar');
+            if (bar) bar.style.width = percent + '%';
+            const label = document.getElementById('loadingPercentLabel');
+            if (label) label.innerText = percent + '%';
+            const statusLabel = document.getElementById('loadingStatusLabel');
+            if (statusLabel) {
+                if (percent < 95) {
+                    statusLabel.innerText = 'Descargando Mario Kart 64 (' + percent + '%)...';
+                } else {
+                    statusLabel.innerText = 'Inicializando WebAssembly y 3D WebGL2...';
+                }
+            }
+        };
+
+        window.onEmulatorStarted = function() {
+            setTimeout(() => {
+                const overlay = document.getElementById('startOverlay');
+                if (overlay) overlay.style.display = 'none';
+                document.getElementById('statusDot').style.background = 'var(--accent-green)';
+                document.getElementById('statusText').innerText = '🟢 Mario Kart 64 (60 FPS)';
+                toastr.success('¡Juego iniciado! Usa Flechas y X/Z para conducir.');
+            }, 350);
+        };
+
+        window.onRomLoadError = function(errMsg) {
+            const statusLabel = document.getElementById('loadingStatusLabel');
+            if (statusLabel) {
+                statusLabel.innerText = '❌ Error al cargar';
+                statusLabel.style.color = 'var(--accent-red)';
+            }
+            const desc = document.getElementById('overlayDesc');
+            if (desc) desc.innerHTML = '<span style="color:#ff5252">' + errMsg + '</span>';
+            const buttons = document.getElementById('startButtonsContainer');
+            if (buttons) {
+                buttons.style.display = 'flex';
+                const btn = document.getElementById('btnStartGame');
+                if (btn) btn.innerText = '🔄 Reintentar';
+            }
+            toastr.error(errMsg);
+        };
+
         function setupHostMode() {
             try {
                 myApp = window.myApp || new MyClass();
@@ -648,12 +709,28 @@
         }
 
         function startHostGame() {
-            document.getElementById('startOverlay').style.display = 'none';
-            document.getElementById('statusText').innerText = 'Ejecutando Mario Kart 64...';
+            const container = document.getElementById('loadingProgressContainer');
+            if (container) container.style.display = 'block';
+            const buttons = document.getElementById('startButtonsContainer');
+            if (buttons) buttons.style.display = 'none';
+            document.getElementById('loadingStatusLabel').innerText = 'Preparando emulador...';
+            document.getElementById('statusText').innerText = 'Cargando Mario Kart 64...';
 
-            if (myApp) {
-                myApp.loadRom();
+            if (!myApp) {
+                myApp = window.myApp || new MyClass();
+                window.myApp = myApp;
             }
+
+            const attemptLoad = () => {
+                if (myApp.rivetsData && myApp.rivetsData.moduleInitializing) {
+                    document.getElementById('loadingStatusLabel').innerText = 'Compilando motor WebAssembly...';
+                    setTimeout(attemptLoad, 250);
+                    return;
+                }
+                myApp.loadRom();
+            };
+
+            attemptLoad();
         }
 
         function startHostAndRoom() {

@@ -259,6 +259,9 @@ class MyClass {
             this.sendMobileControls = Module.cwrap('neil_send_mobile_controls', null, ['string','string','string']);
             this.setRemainingAudio = Module.cwrap('neil_set_buffer_remaining', null, ['number']);
             this.setDoubleSpeed = Module.cwrap('neil_set_double_speed', null, ['number']);
+            if (window.onEmulatorStarted) {
+                window.onEmulatorStarted();
+            }
         }
 
     }
@@ -801,24 +804,35 @@ class MyClass {
 
         var req = new XMLHttpRequest();
         req.open("GET", path);
-        req.overrideMimeType("text/plain; charset=x-user-defined");
-        req.onerror = () => console.log(`Error loading ${path}: ${req.statusText}`);
+        req.onprogress = (e) => {
+            if (e.lengthComputable && window.onRomLoadProgress) {
+                const percent = Math.round((e.loaded / e.total) * 100);
+                window.onRomLoadProgress(percent);
+            }
+        };
+
+        req.onerror = () => {
+            console.log(`Error loading ${path}: ${req.statusText}`);
+            if (window.onRomLoadError) window.onRomLoadError(`Error al descargar ${path}: ${req.statusText}`);
+        };
         req.responseType = "arraybuffer";
 
         req.onload = function () {
-            var arrayBuffer = req.response; // Note: not oReq.responseText
-            try{
-                if (arrayBuffer) {
-                    var byteArray = new Uint8Array(arrayBuffer);
-                    myClass.LoadEmulator(byteArray);
-                }
-                else{
-                    //toastr.error('Error Loading Cloud Save');
-                }
+            var arrayBuffer = req.response;
+            if (req.status >= 400 || !arrayBuffer || arrayBuffer.byteLength === 0) {
+                console.error("Failed to load ROM, HTTP " + req.status);
+                if (window.onRomLoadError) window.onRomLoadError("Error " + req.status + " al descargar " + path);
+                return;
+            }
+            try {
+                if (window.onRomLoadProgress) window.onRomLoadProgress(100);
+                var byteArray = new Uint8Array(arrayBuffer);
+                myClass.LoadEmulator(byteArray);
             }
             catch(error){
                 console.log(error);
-                toastr.error('Error Loading Save');
+                if (window.onRomLoadError) window.onRomLoadError("Error al iniciar emulador: " + error.message);
+                toastr.error('Error al iniciar el juego');
             }
         };
 
