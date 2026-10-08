@@ -667,7 +667,7 @@ class MyClass {
     }
 
     resizeCanvas() {
-        $('#canvas').width(this.canvasSize);
+        // Handled cleanly by responsive CSS
     }
 
     zoomOut() {
@@ -1229,33 +1229,9 @@ class MyClass {
     }
 
     setupMobileMode() {
-
-        this.canvasSize = window.innerWidth;
-        console.log('canvas size', this.canvasSize);
-
-        $("#btnHideMenu").show();
-        let halfWidth = (window.innerWidth / 2) - 35;
-        document.getElementById("menuDiv").style.left = halfWidth + "px";
-
-        this.rivetsData.inputController.setupMobileControls('divTouchSurface');
-
-        // document.getElementById('body').style['background-color'] = 'white';
-
-        $("#mobileDiv").show();
-        $("#maindiv").hide();
-        $("#middleDiv").hide();
-        $('#canvas').appendTo("#mobileCanvas");
-
-        document.getElementById('maindiv').classList.remove('container');
-
-        //fixes the small gap between canvas and mobile buttons
-        document.getElementById('canvas').style.display = 'block';
-
-        //scroll back to top
-        try {
-            document.body.scrollTop = 0; // For Safari
-            document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
-        } catch (error) { }
+        // Neutralized: We use the unified responsive stage and custom virtual joystick in index.html
+        // Legacy code hid #maindiv and moved #canvas to #mobileCanvas which broke WebRTC & fullscreen
+        console.log('Mobile device detected: using unified responsive stage & virtual joystick');
     }
 
     hideMobileMenu() {

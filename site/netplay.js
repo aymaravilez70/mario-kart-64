@@ -121,10 +121,42 @@ window.Netplay = (function() {
             peer.on('error', (err) => {
                 console.error('PeerJS Host Error:', err);
                 if (err.type === 'unavailable-id') {
-                    // Try another code
                     Netplay.createRoom(onReady, onGuestJoin, onGuestLeave);
                 }
             });
+
+            function sendMediaStreamToGuest(guestPeerId) {
+                const canvas = document.getElementById('canvas');
+                if (!canvas) return;
+                try {
+                    const videoStream = canvas.captureStream ? canvas.captureStream(60) : canvas.mozCaptureStream(60);
+                    const tracks = [...videoStream.getVideoTracks()];
+
+                    const vTrack = tracks[0];
+                    if (vTrack && vTrack.requestFrame) {
+                        if (window._canvasPumpInterval) clearInterval(window._canvasPumpInterval);
+                        window._canvasPumpInterval = setInterval(() => {
+                            try { vTrack.requestFrame(); } catch (e) {}
+                        }, 1000 / 60);
+                    }
+
+                    if (window.myApp && window.myApp.audioDestination && window.myApp.audioDestination.stream) {
+                        const audioTracks = window.myApp.audioDestination.stream.getAudioTracks();
+                        if (audioTracks.length > 0) {
+                            tracks.push(audioTracks[0]);
+                        }
+                    }
+
+                    localStream = new MediaStream(tracks);
+                    console.log('Calling guest with MediaStream (tracks: ' + tracks.length + ')');
+                    if (activeCall) {
+                        try { activeCall.close(); } catch(e) {}
+                    }
+                    activeCall = peer.call(guestPeerId, localStream);
+                } catch (err) {
+                    console.error('Error capturing stream:', err);
+                }
+            }
 
             peer.on('connection', (conn) => {
                 console.log('Guest connected data channel:', conn.peer);
@@ -133,31 +165,7 @@ window.Netplay = (function() {
                 conn.on('open', () => {
                     console.log('Data connection open with Guest!');
                     conn.send({ type: 'WELCOME', room: roomCode, game: 'Mario Kart 64' });
-
-                    // Prepare media stream to send to guest
-                    const canvas = document.getElementById('canvas');
-                    if (canvas) {
-                        try {
-                            const videoStream = canvas.captureStream ? canvas.captureStream(60) : canvas.mozCaptureStream(60);
-                            const tracks = [...videoStream.getVideoTracks()];
-
-                            // Add audio track if audioContext is initialized
-                            if (window.myApp && window.myApp.audioDestination && window.myApp.audioDestination.stream) {
-                                const audioTracks = window.myApp.audioDestination.stream.getAudioTracks();
-                                if (audioTracks.length > 0) {
-                                    tracks.push(audioTracks[0]);
-                                }
-                            }
-
-                            localStream = new MediaStream(tracks);
-                            console.log('Calling guest with MediaStream (tracks: ' + tracks.length + ')');
-                            const call = peer.call(conn.peer, localStream);
-                            activeCall = call;
-                        } catch (err) {
-                            console.error('Error capturing stream:', err);
-                        }
-                    }
-
+                    sendMediaStreamToGuest(conn.peer);
                     if (onGuestJoin) onGuestJoin(conn.peer);
                 });
 
@@ -166,6 +174,9 @@ window.Netplay = (function() {
                         if (window.ControllerManager) {
                             window.ControllerManager.setPlayer2State(data.state);
                         }
+                    } else if (data.type === 'REFRESH_STREAM') {
+                        console.log('Guest requested stream refresh, resending...');
+                        sendMediaStreamToGuest(conn.peer);
                     } else if (data.type === 'PING') {
                         conn.send({ type: 'PONG', t: data.t });
                     }
@@ -180,6 +191,15 @@ window.Netplay = (function() {
                     if (onGuestLeave) onGuestLeave();
                 });
             });
+
+            this._sendMediaStreamToGuest = sendMediaStreamToGuest;
+        },
+
+        refreshHostStream: function() {
+            if (isHost && activeConn && activeConn.peer && this._sendMediaStreamToGuest) {
+                console.log('Refreshing host stream to connected guest');
+                this._sendMediaStreamToGuest(activeConn.peer);
+            }
         },
 
         // ==========================================
@@ -305,6 +325,12 @@ window.Netplay = (function() {
             guestInput.right = x > 0.3;
             guestInput.up = y < -0.3;
             guestInput.down = y > 0.3;
+        },
+
+        requestStreamRefresh: function() {
+            if (activeConn && activeConn.open) {
+                try { activeConn.send({ type: 'REFRESH_STREAM' }); } catch(e) {}
+            }
         }
     };
 })();

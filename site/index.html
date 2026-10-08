@@ -144,36 +144,92 @@
         .stage-wrapper {
             position: relative;
             background: #000;
-            border-radius: 16px;
+            border-radius: 14px;
             overflow: hidden;
             border: 2px solid var(--border);
             box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
             width: 100%;
-            max-width: 800px;
-            aspect-ratio: 4 / 3;
+            max-width: 1080px; /* Big cinematic display on PC */
+            aspect-ratio: 16 / 9; /* Modern widescreen ratio */
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
+            margin: 0 auto;
+            transition: all 0.25s ease;
         }
 
-        .stage-wrapper.fullscreen {
-            max-width: 100vw;
-            width: 100vw;
-            height: 100vh;
-            border-radius: 0;
-            border: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1000;
-        }
-
-        #canvas, #guestVideo {
+        #canvasDiv {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
-            object-fit: contain;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        #canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Recortar bordes para llenar 100% de la pantalla sin barras */
             display: block;
+        }
+
+        #guestVideo {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Recortar bordes para llenar 100% de la pantalla sin barras */
+            display: none;
+            background: #000;
+            z-index: 1;
+        }
+
+        /* Mode: 4:3 Clásico si el usuario desactiva el recorte */
+        .stage-wrapper.fit-contain #canvas,
+        .stage-wrapper.fit-contain #guestVideo {
+            object-fit: contain !important;
+        }
+
+        /* FULLSCREEN API STYLES: 100vw x 100vh Edge-to-Edge */
+        :fullscreen, ::backdrop {
+            background-color: #000;
+        }
+
+        .stage-wrapper:fullscreen,
+        :fullscreen .stage-wrapper,
+        .stage-wrapper.fullscreen {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+            z-index: 99999 !important;
+        }
+
+        .stage-wrapper:fullscreen #canvas,
+        .stage-wrapper:fullscreen #guestVideo,
+        :fullscreen #canvas,
+        :fullscreen #guestVideo,
+        .stage-wrapper.fullscreen #canvas,
+        .stage-wrapper.fullscreen #guestVideo {
+            width: 100vw !important;
+            height: 100vh !important;
+            object-fit: cover !important;
+        }
+
+        .stage-wrapper.fit-contain:fullscreen #canvas,
+        .stage-wrapper.fit-contain:fullscreen #guestVideo {
+            object-fit: contain !important;
         }
 
         /* OVERLAYS & INTRO POSTER */
@@ -586,17 +642,97 @@
             50% { transform: translateX(-50%) scale(1.04); }
         }
 
-        @media (max-width: 768px) {
+        /* MOBILE LANDSCAPE MODE: edge-to-edge full screen arcade experience */
+        @media (max-height: 580px) and (orientation: landscape), (max-width: 950px) and (orientation: landscape) {
+            body {
+                overflow: hidden !important;
+                height: 100vh !important;
+                width: 100vw !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            header {
+                display: none !important;
+            }
+            main {
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: 100vw !important;
+                height: 100vh !important;
+                width: 100vw !important;
+                overflow: hidden !important;
+            }
             .stage-wrapper {
-                border-radius: 0;
-                border: none;
-                max-width: 100vw;
-                width: 100vw;
-                aspect-ratio: 4 / 3;
+                position: fixed !important;
+                inset: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-width: 100vw !important;
+                max-height: 100vh !important;
+                border-radius: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                aspect-ratio: auto !important;
+                z-index: 100 !important;
+            }
+            #canvasDiv, #guestVideo {
+                width: 100vw !important;
+                height: 100vh !important;
+            }
+            #canvas, #guestVideo {
+                width: 100vw !important;
+                height: 100vh !important;
+                object-fit: cover !important; /* Edge to edge, zero black bars! */
+            }
+            .stage-wrapper.fit-contain #canvas,
+            .stage-wrapper.fit-contain #guestVideo {
+                object-fit: contain !important;
+            }
+            .toolbar, .card-modal, .phone-rotate-hint {
+                display: none !important;
+            }
+            .mobile-landscape-toggle {
+                display: flex !important;
             }
             .joystick-container {
-                bottom: 10px;
-                left: 10px;
+                bottom: 14px !important;
+                left: 14px !important;
+                width: 120px !important;
+                height: 120px !important;
+            }
+            .touch-buttons-cluster {
+                bottom: 14px !important;
+                right: 14px !important;
+                grid-template-columns: repeat(2, 54px) !important;
+                grid-template-rows: repeat(2, 54px) !important;
+                gap: 10px !important;
+            }
+            .touch-btn {
+                width: 54px !important;
+                height: 54px !important;
+            }
+        }
+
+        /* MOBILE PORTRAIT MODE */
+        @media (max-width: 768px) and (orientation: portrait) {
+            header {
+                padding: 10px 14px;
+            }
+            .brand-title {
+                font-size: 16px;
+            }
+            .stage-wrapper {
+                border-radius: 12px;
+                max-width: 100vw;
+                width: 100%;
+                aspect-ratio: 16 / 9;
+            }
+            .phone-rotate-hint {
+                display: block !important;
+            }
+            .joystick-container {
+                bottom: 12px;
+                left: 12px;
                 width: 120px;
                 height: 120px;
             }
@@ -605,8 +741,8 @@
                 height: 50px;
             }
             .touch-buttons-cluster {
-                bottom: 10px;
-                right: 10px;
+                bottom: 12px;
+                right: 12px;
                 grid-template-columns: repeat(2, 54px);
                 grid-template-rows: repeat(2, 54px);
                 gap: 10px;
@@ -642,6 +778,9 @@
                 <div id="statusDot" class="dot-pulse"></div>
                 <span id="statusText">Cargando Motor...</span>
             </div>
+            <button id="btnAspectFit" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="toggleAspectFit()">
+                ✂️ Recortar (100%)
+            </button>
             <button id="btnFullscreen" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;" onclick="toggleFullscreen()">
                 📺 Pantalla Completa
             </button>
@@ -652,12 +791,28 @@
         <!-- Canvas / Game Stage -->
         <div class="stage-wrapper" id="stageWrapper">
             <!-- Host Canvas (Player 1) -->
-            <div id="canvasDiv" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <div id="canvasDiv">
                 <canvas id="canvas"></canvas>
             </div>
 
             <!-- Guest Stream (Player 2 over WebRTC) -->
-            <video id="guestVideo" autoplay playsinline style="display: none;"></video>
+            <video id="guestVideo" autoplay playsinline></video>
+
+            <!-- Floating Menu for Mobile Landscape -->
+            <button class="mobile-landscape-toggle" id="btnLandscapeMenu" onclick="toggleLandscapeMenu()" style="display: none; position: absolute; top: 12px; right: 12px; z-index: 40; background: rgba(20, 22, 34, 0.75); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; align-items: center; gap: 6px;">
+                ⚙️ Opciones
+            </button>
+
+            <!-- Landscape Quick Modal -->
+            <div id="landscapeMenuModal" style="display: none; position: absolute; inset: 0; background: rgba(0,0,0,0.88); backdrop-filter: blur(12px); z-index: 55; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px;">
+                <h3 style="color: #fff; font-size: 18px; font-weight: 800; margin-bottom: 6px;">⚙️ Opciones de Pantalla</h3>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 380px;">
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="toggleAspectFit()">✂️ Alternar Recorte (100% / 4:3)</button>
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="toggleInviteModal(); toggleLandscapeMenu();">🌐 Invitar Amigo (Crear Sala)</button>
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="resetGame()">🔄 Reiniciar Juego</button>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 6px;" onclick="toggleLandscapeMenu()">✕ Continuar Carrera</button>
+                </div>
+            </div>
 
             <!-- Intro / Start Overlay -->
             <div class="start-overlay" id="startOverlay">
@@ -724,6 +879,10 @@
                     <button class="touch-btn-start" id="tBtnStart" data-action="start">START</button>
                 </div>
             </div>
+        </div>
+
+        <div class="phone-rotate-hint" style="display: none; font-size: 12px; color: var(--accent-gold); margin-top: 10px; text-align: center; font-weight: 600;">
+            🔄 Gira tu teléfono a horizontal para pantalla completa edge-to-edge
         </div>
 
         <!-- Controls Toolbar -->
@@ -1037,6 +1196,9 @@
                 document.getElementById('statusDot').style.background = 'var(--accent-green)';
                 document.getElementById('statusText').innerText = '🟢 Mario Kart 64 (60 FPS)';
                 toastr.success('¡Juego iniciado! Conduce con las Flechas y X/Z.');
+                if (window.Netplay && window.Netplay.refreshHostStream) {
+                    window.Netplay.refreshHostStream();
+                }
             }, 350);
         };
 
@@ -1059,6 +1221,11 @@
 
         function setupHostMode() {
             try {
+                const cDiv = document.getElementById('canvasDiv');
+                if (cDiv) cDiv.style.display = 'flex';
+                const gVid = document.getElementById('guestVideo');
+                if (gVid) gVid.style.display = 'none';
+
                 myApp = window.myApp || new MyClass();
                 window.myApp = myApp;
 
@@ -1152,9 +1319,10 @@
         // ----------------------------------------
         function setupGuestMode(code) {
             isGuestMode = true;
-            document.getElementById('canvas').style.display = 'none';
+            const cDiv = document.getElementById('canvasDiv');
+            if (cDiv) cDiv.style.display = 'none';
             const guestVideo = document.getElementById('guestVideo');
-            guestVideo.style.display = 'block';
+            if (guestVideo) guestVideo.style.display = 'block';
 
             document.getElementById('overlayTitle').innerText = 'Mario Kart 64 Online';
             document.getElementById('overlayDesc').innerHTML = 'Conectando con la sala <b>' + code.toUpperCase() + '</b> del Anfitrión...';
@@ -1176,6 +1344,37 @@
             connectGuest(code);
         }
 
+        let guestWatchdog = null;
+        function startGuestVideoWatchdog() {
+            if (guestWatchdog) clearInterval(guestWatchdog);
+            let lastTime = -1;
+            let frozenTicks = 0;
+            guestWatchdog = setInterval(() => {
+                const v = document.getElementById('guestVideo');
+                if (!isGuestMode || !v || !v.srcObject) return;
+
+                if (v.paused) {
+                    console.log("Watchdog: Guest video pausado, reanudando...");
+                    v.play().catch(() => {});
+                }
+
+                if (v.currentTime === lastTime && v.readyState >= 2) {
+                    frozenTicks++;
+                    if (frozenTicks >= 2) {
+                        console.warn("Watchdog: Stream de video congelado, pidiendo actualización de fotogramas al host...");
+                        if (window.Netplay && window.Netplay.requestStreamRefresh) {
+                            window.Netplay.requestStreamRefresh();
+                        }
+                        v.play().catch(() => {});
+                        frozenTicks = 0;
+                    }
+                } else {
+                    lastTime = v.currentTime;
+                    frozenTicks = 0;
+                }
+            }, 1000);
+        }
+
         function connectGuest(code) {
             document.getElementById('statusText').innerText = 'Conectando WebRTC...';
 
@@ -1193,7 +1392,7 @@
                 (stream) => {
                     const video = document.getElementById('guestVideo');
                     video.srcObject = stream;
-                    video.muted = true; // MUST start muted for instant autoplay on mobile/desktop without blocking
+                    video.muted = true; // MUST start muted for instant autoplay without browser blocking
                     video.playsInline = true;
                     video.setAttribute('playsinline', '');
                     video.setAttribute('webkit-playsinline', '');
@@ -1202,8 +1401,7 @@
                     if (playPromise !== undefined) {
                         playPromise.then(() => {
                             console.log("Guest video playing smoothly 60 FPS");
-                            // Try to unmute if already interacted
-                            video.muted = false;
+                            showUnmuteNotice();
                         }).catch(e => {
                             console.warn("Muted autoplay fallback active:", e);
                             video.muted = true;
@@ -1222,6 +1420,7 @@
                         if (overlay) overlay.style.display = 'none';
                     }, 500);
 
+                    startGuestVideoWatchdog();
                     toastr.success('¡Transmisión 60 FPS activa!');
                 },
                 // onDisconnected
@@ -1242,6 +1441,27 @@
         // ----------------------------------------
         // HELPERS
         // ----------------------------------------
+        function toggleAspectFit() {
+            const wrapper = document.getElementById('stageWrapper');
+            const btn = document.getElementById('btnAspectFit');
+            const isCover = !wrapper.classList.contains('fit-contain');
+            if (isCover) {
+                wrapper.classList.add('fit-contain');
+                if (btn) btn.innerText = '📺 4:3 Clásico';
+                toastr.info('Modo 4:3 Clásico (con barras laterales)');
+            } else {
+                wrapper.classList.remove('fit-contain');
+                if (btn) btn.innerText = '✂️ Recortar (100%)';
+                toastr.success('Modo Recorte Panorámico (100% Pantalla Completa)');
+            }
+        }
+
+        function toggleLandscapeMenu() {
+            const m = document.getElementById('landscapeMenuModal');
+            if (!m) return;
+            m.style.display = (m.style.display === 'flex' || m.style.display === 'block') ? 'none' : 'flex';
+        }
+
         function toggleLocal2P() {
             if (!window.ControllerManager) return;
             window.ControllerManager.local2PlayerEnabled = !window.ControllerManager.local2PlayerEnabled;
