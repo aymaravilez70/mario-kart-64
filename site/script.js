@@ -19,6 +19,8 @@ class MyClass {
         this.sraData = null;
         this.flaData = null;
         this.dblist = [];
+        this.emuLoopRunning = false;
+        this.audioPlaybackStarted = false;
         var Module = {};
         Module['canvas'] = document.getElementById('canvas');
         window['Module'] = Module;
@@ -260,6 +262,7 @@ class MyClass {
             this.sendMobileControls = Module.cwrap('neil_send_mobile_controls', null, ['string','string','string']);
             this.setRemainingAudio = Module.cwrap('neil_set_buffer_remaining', null, ['number']);
             this.setDoubleSpeed = Module.cwrap('neil_set_double_speed', null, ['number']);
+            this.startEmulatorLoop();
             if (window.onEmulatorStarted) {
                 window.onEmulatorStarted();
             }
@@ -353,17 +356,39 @@ class MyClass {
 
     }
 
-    hasEnoughSamples(){
-        const wPos = this.audioWritePosition;
-        const rPos = this.audioReadPosition;
-        const available = (wPos >= rPos)
-            ? (wPos - rPos)
-            : (64000 - rPos + wPos);
-        return available >= (AUDIOBUFFSIZE * 2);
+    startEmulatorLoop() {
+        if (this.emuLoopRunning) return;
+        this.emuLoopRunning = true;
+
+        let lastTime = performance.now();
+        const TARGET_INTERVAL = 1000 / 60; // 16.666 ms
+
+        const emuFrame = (now) => {
+            if (!this.emuLoopRunning) return;
+            requestAnimationFrame(emuFrame);
+
+            if (this.rivetsData.beforeEmulatorStarted) return;
+
+            const delta = now - lastTime;
+            // Cap at 60 FPS: drop extra ticks on 90Hz, 120Hz, or 144Hz displays
+            if (delta < 15.0) {
+                return;
+            }
+
+            lastTime = now - (delta % TARGET_INTERVAL);
+
+            try {
+                Module._runMainLoop();
+            } catch (err) {
+                console.error("Emulator frame error:", err);
+            }
+        };
+
+        requestAnimationFrame(emuFrame);
     }
 
-    //this method keeps getting called when it needs more audio
-    //data to play so we just keep streaming it from the emulator
+    // This method is called by Web Audio when more sound is required.
+    // It is completely decoupled from Module._runMainLoop to ensure 0% audio thread overhead.
     AudioProcessRecurring(audioProcessingEvent){
 
         if (this.audioThreadLock || this.rivetsData.beforeEmulatorStarted)
@@ -396,55 +421,40 @@ class MyClass {
             this.audioContext.resume().catch(() => {});
         }
 
-        if (this.rivetsData.disableAudioSync)
-        {
-            this.audioWritePosition = Module._neilGetAudioWritePosition();
-        }
-        else
-        {
-            // Initial warm-up: pre-fill cushion (~3 frames = 4410 entries / 50ms)
-            if (this.audioWarmupFrames > 0) {
-                while (this.audioWarmupFrames > 0) {
-                    Module._runMainLoop();
-                    this.audioWarmupFrames--;
-                }
-            }
+        this.audioWritePosition = Module._neilGetAudioWritePosition();
+        let rPos = this.audioReadPosition;
+        const wPos = this.audioWritePosition;
 
-            this.audioWritePosition = Module._neilGetAudioWritePosition();
-            const rPos = this.audioReadPosition;
-            const wPos = this.audioWritePosition;
-            const curAvailable = (wPos >= rPos) ? (wPos - rPos) : (64000 - rPos + wPos);
+        // Calculate available stereo entries in 64,000 ring buffer
+        let available = (wPos >= rPos) ? (wPos - rPos) : (64000 - rPos + wPos);
 
-            // Buffer consumption per callback is AUDIOBUFFSIZE * 2 (2048 entries for stereo)
-            // One N64 frame produces ~1470 entries (735 samples at 44.1kHz).
-            // Adaptive schedule targets a silky 35ms - 75ms buffer cushion (3072 - 6615 entries):
-            if (curAvailable < 2048) {
-                // Emergency underrun prevention: run 2 frames to immediately rebuild cushion
-                Module._runMainLoop();
-                Module._runMainLoop();
-            } else if (curAvailable < 4410) {
-                // Cushion slightly below target (~50ms): run 1 frame and check if 2nd is needed
-                Module._runMainLoop();
-                this.audioWritePosition = Module._neilGetAudioWritePosition();
-                const afterAvail = (this.audioWritePosition >= rPos) ? (this.audioWritePosition - rPos) : (64000 - rPos + this.audioWritePosition);
-                if (afterAvail < 3000) {
-                    Module._runMainLoop();
-                }
-            } else if (curAvailable >= 7350) {
-                // Buffer running ahead (>83ms): skip running emulator frame this tick to let audio catch up naturally
+        // Warmup: wait until emulator has buffered ~3000 entries (~35ms) before streaming
+        if (!this.audioPlaybackStarted) {
+            if (available >= 3000) {
+                this.audioPlaybackStarted = true;
             } else {
-                // Optimal golden zone (4410 .. 7350 entries): run exactly 1 frame (solid 60 FPS lock)
-                Module._runMainLoop();
+                for (let s = 0; s < AUDIOBUFFSIZE; s++) {
+                    outputData1[s] = 0;
+                    outputData2[s] = 0;
+                }
+                this.audioThreadLock = false;
+                return;
             }
+        }
 
-            this.audioWritePosition = Module._neilGetAudioWritePosition();
+        // Dynamic rate matching to keep cushion centered around ~4000 entries (~45ms):
+        // If buffer > 5500: skip 1 sample every 64 samples (+1.5% consumption speed)
+        // If buffer < 3000: repeat 1 sample every 64 samples (-1.5% consumption speed)
+        let rateAdjust = 0;
+        if (available > 5500) {
+            rateAdjust = 1;
+        } else if (available < 3000 && available >= 2048) {
+            rateAdjust = -1;
         }
 
         let hadSkip = false;
         const invScale = 0.000030517578125; // 1 / 32768.0
         const buf = this.audioBufferResampled;
-        let rPos = this.audioReadPosition;
-        const wPos = this.audioWritePosition;
         let lastL = this.lastAudioL || 0;
         let lastR = this.lastAudioR || 0;
 
@@ -454,13 +464,20 @@ class MyClass {
                 lastR = buf[rPos + 1] * invScale;
                 outputData1[sample] = lastL;
                 outputData2[sample] = lastR;
-                rPos += 2;
+
+                if (rateAdjust === 1 && (sample % 64 === 0) && wPos !== rPos) {
+                    rPos += 4; // micro-skip 1 sample to gently drain buffer
+                } else if (rateAdjust === -1 && (sample % 64 === 0)) {
+                    // micro-repeat: do not advance rPos to gently build buffer
+                } else {
+                    rPos += 2;
+                }
+
                 if (rPos >= 64000) {
-                    rPos = 0;
+                    rPos = rPos % 64000;
                 }
             } else {
-                // Buffer underrun: apply smooth exponential decay towards 0
-                // Eliminates harsh digital clicks and DC pops on mobile thread jitter
+                // Underrun: smooth exponential decay towards 0 prevents DC pop
                 lastL *= 0.92;
                 lastR *= 0.92;
                 outputData1[sample] = lastL;
@@ -468,17 +485,19 @@ class MyClass {
                 hadSkip = true;
             }
         }
+
         this.lastAudioL = lastL;
         this.lastAudioR = lastR;
         this.audioReadPosition = rPos;
 
         if (hadSkip) {
             this.rivetsData.audioSkipCount++;
-            // Rapidly re-prime cushion on next callback to escape vicious starvation loop
-            this.audioWarmupFrames = 2;
+            if (available < 400) {
+                // If completely starved, require fresh warmup to avoid rapid micro-stutters
+                this.audioPlaybackStarted = false;
+            }
         }
 
-        // O(1) buffer calculation (replaces 64,000 iteration loop on every audio tick)
         const audioBufferRemaining = (wPos >= rPos)
             ? (wPos - rPos)
             : (64000 - rPos + wPos);
@@ -1643,6 +1662,7 @@ class MyClass {
 
     reset(){
         Module._neil_reset();
+        this.audioPlaybackStarted = false;
     }
 
     localCallback(){

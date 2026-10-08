@@ -1745,7 +1745,8 @@
 
         function resetGame() {
             if (myApp && Module._neil_reset) {
-                Module._neil_reset();
+                if (myApp.reset) myApp.reset();
+                else Module._neil_reset();
                 toastr.info('Juego reiniciado');
             } else {
                 window.location.reload();
